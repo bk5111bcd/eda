@@ -5,14 +5,23 @@ from typing import Optional
 
 
 def load_dataset(file_path: str) -> pd.DataFrame:
-    """Load dataset from CSV or Excel file"""
+    """Load dataset from CSV or Excel file with automatic normalization"""
     try:
         if file_path.endswith('.csv'):
-            return pd.read_csv(file_path)
+            df = pd.read_csv(file_path)
         elif file_path.endswith(('.xlsx', '.xls')):
-            return pd.read_excel(file_path)
+            df = pd.read_excel(file_path)
         else:
             raise ValueError(f"Unsupported file format: {file_path}")
+        
+        # GOLDEN FIX: Normalize all data
+        # Strip whitespace and convert to lowercase for string columns
+        df.columns = df.columns.str.strip().str.lower()
+        for col in df.columns:
+            if df[col].dtype == 'object':  # String columns
+                df[col] = df[col].astype(str).str.strip().str.lower()
+        
+        return df
     except Exception as e:
         raise Exception(f"Error loading dataset: {str(e)}")
 
@@ -60,7 +69,8 @@ def retrieve_from_dataset(df, question):
     if not isinstance(question, str):
         return f"❌ Internal error: question must be text, got {type(question)}"
     
-    q = question.lower()
+    # Normalize question (strip and lowercase)
+    q = question.lower().strip()
 
     # Words that mean "analysis"
     analysis_keywords = [
@@ -87,20 +97,23 @@ def retrieve_from_dataset(df, question):
     # Handle individual row lookups first (high priority)
     # Pattern: "X's [column]" or "[column] of X"
     for id_col in df.columns:
-        id_col_lower = id_col.lower()
-        if id_col_lower in ['name', 'id', 'employee', 'person', 'user']:
-            for value in df[id_col].unique():
-                value_str = str(value).lower()
+        if id_col in ['name', 'id', 'employee', 'person', 'user']:
+            # Get available names for better error messages
+            available_names = df[id_col].unique().tolist()
+            
+            for value in available_names:
+                value_str = str(value)
                 if value_str in q:
                     # Found entity - now find what column they're asking about
                     for col in df.columns:
-                        col_lower = col.lower()
-                        if col_lower != id_col_lower and col_lower in q:
-                            # Convert column to string first, then apply .lower()
-                            mask = df[id_col].astype(str).str.lower() == value_str
+                        if col != id_col and col in q:
+                            mask = df[id_col] == value_str
                             if mask.any():
                                 result_value = df.loc[mask, col].values[0]
                                 return f"✓ {value}'s {col}: {result_value}"
+            
+            # If we got here, no name was matched - provide helpful error
+            return f"❌ Person '{q}' not found. Available: {', '.join(available_names)}"
 
     # Handle statistics queries (min, max, average, mean)
     numeric_cols = df.select_dtypes(include=['number']).columns.tolist()
@@ -140,15 +153,15 @@ def retrieve_from_dataset(df, question):
 
 def extract_name(question: str, df: pd.DataFrame) -> Optional[str]:
     """Extract person/entity name from question - works with any ID column"""
-    q = question.lower()
+    q = question.lower().strip()
     
     # Try to match against values in ID-like columns
     for col in df.columns:
-        col_lower = col.lower()
-        if col_lower in ['name', 'id', 'employee', 'person', 'user']:
+        if col in ['name', 'id', 'employee', 'person', 'user']:
             for value in df[col].unique():
-                if str(value).lower() in q:
-                    return str(value)
+                value_str = str(value)
+                if value_str in q:
+                    return value_str
     
     return None
 
