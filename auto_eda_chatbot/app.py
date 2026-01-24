@@ -567,10 +567,29 @@ if uploaded_file is not None:
 
 elif use_default:
     try:
-        df = load_dataset("data/sample.csv")
-        dataset_name = "Sample Dataset"
-    except:
-        st.warning("⚠️ Could not load sample data")
+        # Try multiple paths for the sample data
+        sample_paths = [
+            "data/sample.csv",
+            "auto_eda_chatbot/data/sample.csv",
+            "auto_eda_chatbot/data/dataset.csv",
+            "data/dataset.csv"
+        ]
+        
+        df = None
+        for path in sample_paths:
+            try:
+                df = load_dataset(path)
+                dataset_name = "Sample Dataset"
+                st.success(f"✅ Loaded sample data from {path}")
+                break
+            except:
+                continue
+        
+        if df is None:
+            st.warning("⚠️ Could not load sample data from any path")
+    except Exception as e:
+        st.error(f"❌ Error loading sample data: {str(e)}")
+        df = None
 
 if df is not None:
     # ═════════════════════════════════════════════════════════════════════════

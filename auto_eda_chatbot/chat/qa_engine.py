@@ -54,6 +54,12 @@ def retrieve_from_dataset(df, question):
     Dataset-agnostic retrieval function.
     Works with any DataFrame structure.
     """
+    # Safety check: ensure question is a string
+    if isinstance(question, pd.DataFrame):
+        return "❌ Internal error: DataFrame passed instead of question text"
+    if not isinstance(question, str):
+        return f"❌ Internal error: question must be text, got {type(question)}"
+    
     q = question.lower()
 
     # Words that mean "analysis"
@@ -90,7 +96,8 @@ def retrieve_from_dataset(df, question):
                     for col in df.columns:
                         col_lower = col.lower()
                         if col_lower != id_col_lower and col_lower in q:
-                            mask = df[id_col].str.lower() == value_str
+                            # Convert column to string first, then apply .lower()
+                            mask = df[id_col].astype(str).str.lower() == value_str
                             if mask.any():
                                 result_value = df.loc[mask, col].values[0]
                                 return f"✓ {value}'s {col}: {result_value}"
@@ -184,6 +191,12 @@ def parse_visualization_request(question: str, df: pd.DataFrame) -> Optional[tup
 
 def answer_question(df, question):
     """Router: Pandas first, LLM second. NO LOGIC, NO CONDITIONS."""
+    # Safety check: ensure question is a string
+    if isinstance(question, pd.DataFrame):
+        return "❌ Internal error: DataFrame passed instead of question text"
+    if not isinstance(question, str):
+        return f"❌ Internal error: question must be text, got {type(question)}"
+    
     result = retrieve_from_dataset(df, question)
 
     if result is None:
