@@ -555,12 +555,20 @@ dataset_name = "Sample Dataset"
 
 if uploaded_file is not None:
     try:
-        if uploaded_file.name.endswith('.csv'):
-            df = pd.read_csv(uploaded_file)
-        else:
-            df = pd.read_excel(uploaded_file)
-        dataset_name = uploaded_file.name.replace('.csv', '').replace('.xlsx', '')
-        st.success(f"✅ Dataset loaded successfully: {uploaded_file.name}")
+        # Save uploaded file temporarily to apply load_dataset normalization
+        import tempfile
+        import os
+        
+        with tempfile.NamedTemporaryFile(delete=False, suffix='.csv') as tmp:
+            tmp.write(uploaded_file.getbuffer())
+            tmp_path = tmp.name
+        
+        try:
+            df = load_dataset(tmp_path)
+            dataset_name = uploaded_file.name.replace('.csv', '').replace('.xlsx', '')
+            st.success(f"✅ Dataset loaded successfully: {uploaded_file.name}")
+        finally:
+            os.unlink(tmp_path)
     except Exception as e:
         st.error(f"❌ Error loading file: {str(e)}")
         df = None

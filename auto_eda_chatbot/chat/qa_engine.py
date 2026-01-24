@@ -103,6 +103,7 @@ def retrieve_from_dataset(df, question):
             
             # EXTRACT entity first - don't iterate through names searching in question
             extracted_entity = extract_name(question, df)
+            print(f"DEBUG NAME: {extracted_entity}")  # Nuclear debug line
             
             if extracted_entity:
                 # Found entity - now find what column they're asking about
@@ -115,7 +116,7 @@ def retrieve_from_dataset(df, question):
             
             # If we got here, no name was matched - provide helpful error
             # Show what they asked for vs. what's available
-            return f"❌ Person not found. You asked about: {q}. Available: {', '.join(available_names)}"
+            return f"❌ Person not found. Available: {', '.join(available_names)}"
 
     # Handle statistics queries (min, max, average, mean)
     numeric_cols = df.select_dtypes(include=['number']).columns.tolist()
@@ -155,16 +156,10 @@ def retrieve_from_dataset(df, question):
 
 def extract_name(question: str, df: pd.DataFrame) -> Optional[str]:
     """Extract person/entity name from question - works with any ID column"""
-    q = question.lower().strip()
-    
-    # Try to match against values in ID-like columns
-    for col in df.columns:
-        if col in ['name', 'id', 'employee', 'person', 'user']:
-            for value in df[col].unique():
-                value_str = str(value)
-                if value_str in q:
-                    return value_str
-    
+    q = question.lower()
+    for name in df['name']:
+        if name.lower() in q:
+            return name
     return None
 
 
