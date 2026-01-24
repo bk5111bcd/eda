@@ -95,25 +95,27 @@ def retrieve_from_dataset(df, question):
                     return f"✓ {col}: {len(values)} unique values"
 
     # Handle individual row lookups first (high priority)
-    # Pattern: "X's [column]" or "[column] of X"
+    # IMPORTANT: Extract entity FIRST, then use it (never pass full question to Pandas)
     for id_col in df.columns:
         if id_col in ['name', 'id', 'employee', 'person', 'user']:
             # Get available names for better error messages
             available_names = df[id_col].unique().tolist()
             
-            for value in available_names:
-                value_str = str(value)
-                if value_str in q:
-                    # Found entity - now find what column they're asking about
-                    for col in df.columns:
-                        if col != id_col and col in q:
-                            mask = df[id_col] == value_str
-                            if mask.any():
-                                result_value = df.loc[mask, col].values[0]
-                                return f"✓ {value}'s {col}: {result_value}"
+            # EXTRACT entity first - don't iterate through names searching in question
+            extracted_entity = extract_name(question, df)
+            
+            if extracted_entity:
+                # Found entity - now find what column they're asking about
+                for col in df.columns:
+                    if col != id_col and col in q:
+                        mask = df[id_col] == extracted_entity
+                        if mask.any():
+                            result_value = df.loc[mask, col].values[0]
+                            return f"✓ {extracted_entity}'s {col}: {result_value}"
             
             # If we got here, no name was matched - provide helpful error
-            return f"❌ Person '{q}' not found. Available: {', '.join(available_names)}"
+            # Show what they asked for vs. what's available
+            return f"❌ Person not found. You asked about: {q}. Available: {', '.join(available_names)}"
 
     # Handle statistics queries (min, max, average, mean)
     numeric_cols = df.select_dtypes(include=['number']).columns.tolist()
