@@ -191,12 +191,16 @@ def parse_visualization_request(question: str, df: pd.DataFrame) -> Optional[tup
 
 def answer_question(df, question):
     """Router: Pandas first, LLM second. NO LOGIC, NO CONDITIONS."""
+    # Debug output
+    print(f"[ROUTER] Question Type: {type(question)} | Value Type Check: {isinstance(question, str)}")
+    
     # Safety check: ensure question is a string
     if isinstance(question, pd.DataFrame):
         return "❌ Internal error: DataFrame passed instead of question text"
     if not isinstance(question, str):
         return f"❌ Internal error: question must be text, got {type(question)}"
     
+    print(f"[ROUTER] 🎯 Question: {question.upper()}")
     result = retrieve_from_dataset(df, question)
 
     if result is None:

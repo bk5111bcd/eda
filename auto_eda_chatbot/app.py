@@ -746,7 +746,7 @@ if df is not None:
             with st.chat_message("assistant"):
                 with st.spinner("🤖 Analyzing..."):
                     try:
-                        response = answer_question(prompt, df)
+                        response = answer_question(df, prompt)
                         st.markdown(response)
                         st.session_state.messages.append({"role": "assistant", "content": response})
                     except Exception as e:
