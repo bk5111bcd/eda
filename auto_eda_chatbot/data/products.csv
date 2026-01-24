@@ -1,0 +1,12 @@
+product_name,price,category,stock_quantity,supplier_name,manufacturing_date,quality_rating
+Laptop Dell XPS,85000,Electronics,15,Dell Inc,2023-01-15,9.2
+Phone Samsung A13,28000,Electronics,42,Samsung,2023-02-20,8.8
+Office Chair,12000,Furniture,8,IKEA,2023-03-10,7.5
+Desk Wooden,35000,Furniture,5,Woodcraft,2023-01-25,8.9
+Coffee Maker Delonghi,5500,Appliances,22,DeLonghi,2023-04-05,8.1
+Refrigerator LG,45000,Appliances,3,LG Electronics,2023-02-14,9.1
+Microwave Panasonic,8000,Appliances,18,Panasonic,2023-03-30,8.3
+Monitor Samsung 27,22000,Electronics,12,Samsung,2023-05-10,9.0
+Keyboard Mechanical,4500,Electronics,35,Corsair,2023-04-18,8.7
+Headphones Sony,12000,Electronics,28,Sony,2023-03-05,8.9
+Dining Table Teak,58000,Furniture,2,Woodcraft,2023-01-12,9.3
