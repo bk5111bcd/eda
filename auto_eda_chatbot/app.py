@@ -101,142 +101,224 @@ st.markdown("""
     
     /* Headers styling */
     h1, h2, h3, h4, h5, h6 {
-        background: linear-gradient(135deg, var(--accent-cyan) 0%, var(--accent-teal) 100%);
+        background: linear-gradient(135deg, var(--accent-cyan) 0%, var(--accent-magenta) 50%, var(--accent-teal) 100%);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
         background-clip: text;
         font-weight: 700;
         letter-spacing: 0.5px;
+        animation: glow-text 3s ease-in-out infinite;
+    }
+    
+    @keyframes glow-text {
+        0%, 100% { filter: drop-shadow(0 0 10px rgba(0, 217, 255, 0.2)); }
+        50% { filter: drop-shadow(0 0 20px rgba(217, 70, 239, 0.3)); }
     }
     
     h1 {
         font-size: 2.5rem;
         margin-bottom: 0.5rem;
-        text-shadow: 0 0 20px rgba(0, 217, 255, 0.2);
+        text-shadow: 0 0 30px rgba(0, 217, 255, 0.15);
     }
     
     h2 {
         font-size: 1.8rem;
         margin: 2rem 0 1rem 0;
+        text-shadow: 0 0 15px rgba(0, 217, 255, 0.1);
     }
     
     h3 {
         font-size: 1.3rem;
+        text-shadow: 0 0 10px rgba(217, 70, 239, 0.1);
     }
     
     /* Card/Container styling - Glassmorphism */
     [data-testid="stVerticalBlock"] > [data-testid="column"] {
-        background: rgba(26, 31, 58, 0.4);
-        backdrop-filter: blur(10px);
-        border: 1px solid rgba(0, 217, 255, 0.1);
-        border-radius: 16px;
+        background: rgba(26, 31, 58, 0.3);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        border: 1px solid rgba(0, 217, 255, 0.15);
+        border-radius: 20px;
         padding: 1.5rem;
-        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), inset 0 0 30px rgba(0, 217, 255, 0.05);
-        transition: all 0.3s ease;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), 
+                    inset 0 0 40px rgba(0, 217, 255, 0.05),
+                    0 0 20px rgba(0, 217, 255, 0.05);
+        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        position: relative;
+    }
+    
+    [data-testid="stVerticalBlock"] > [data-testid="column"]::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: linear-gradient(135deg, rgba(0, 217, 255, 0.05) 0%, rgba(217, 70, 239, 0.02) 100%);
+        border-radius: 20px;
+        pointer-events: none;
     }
     
     [data-testid="stVerticalBlock"] > [data-testid="column"]:hover {
-        background: rgba(26, 31, 58, 0.6);
-        border-color: rgba(0, 217, 255, 0.3);
-        box-shadow: 0 8px 32px rgba(0, 217, 255, 0.15), inset 0 0 30px rgba(0, 217, 255, 0.1);
+        background: rgba(26, 31, 58, 0.5);
+        border-color: rgba(0, 217, 255, 0.4);
+        box-shadow: 0 12px 48px rgba(0, 217, 255, 0.2), 
+                    inset 0 0 40px rgba(0, 217, 255, 0.08),
+                    0 0 30px rgba(217, 70, 239, 0.1);
+        transform: translateY(-4px);
     }
     
     /* Metric cards */
     [data-testid="metric-container"] {
-        background: rgba(26, 31, 58, 0.5) !important;
-        backdrop-filter: blur(10px);
-        border: 1px solid rgba(217, 70, 239, 0.2);
-        border-radius: 16px;
+        background: rgba(26, 31, 58, 0.4) !important;
+        backdrop-filter: blur(15px);
+        -webkit-backdrop-filter: blur(15px);
+        border: 1.5px solid rgba(217, 70, 239, 0.25);
+        border-radius: 18px;
         padding: 1.5rem;
-        box-shadow: 0 0 20px rgba(217, 70, 239, 0.15), inset 0 0 20px rgba(217, 70, 239, 0.05);
-        transition: all 0.3s ease;
+        box-shadow: 0 0 30px rgba(217, 70, 239, 0.15), 
+                    inset 0 0 30px rgba(217, 70, 239, 0.05),
+                    0 0 60px rgba(0, 217, 255, 0.08);
+        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        position: relative;
+        overflow: hidden;
+    }
+    
+    [data-testid="metric-container"]::before {
+        content: '';
+        position: absolute;
+        top: -50%;
+        right: -50%;
+        width: 200%;
+        height: 200%;
+        background: radial-gradient(circle, rgba(217, 70, 239, 0.1) 0%, transparent 70%);
+        animation: orbit 20s linear infinite;
+    }
+    
+    @keyframes orbit {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
     }
     
     [data-testid="metric-container"]:hover {
-        border-color: rgba(217, 70, 239, 0.4);
-        box-shadow: 0 0 30px rgba(217, 70, 239, 0.25), inset 0 0 30px rgba(217, 70, 239, 0.1);
-        transform: translateY(-2px);
+        border-color: rgba(217, 70, 239, 0.5);
+        box-shadow: 0 0 40px rgba(217, 70, 239, 0.3), 
+                    inset 0 0 40px rgba(217, 70, 239, 0.1),
+                    0 0 80px rgba(0, 217, 255, 0.15);
+        transform: translateY(-4px) scale(1.02);
     }
     
     /* Buttons - Neon style */
     .stButton > button {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #d946ef 100%);
         color: white;
-        border: 1px solid rgba(0, 217, 255, 0.3);
-        border-radius: 12px;
-        padding: 0.75rem 2rem;
-        font-weight: 600;
+        border: 1.5px solid rgba(0, 217, 255, 0.4);
+        border-radius: 14px;
+        padding: 0.8rem 2.2rem;
+        font-weight: 700;
         font-size: 0.95rem;
-        letter-spacing: 0.5px;
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        box-shadow: 0 0 15px rgba(102, 126, 234, 0.3);
+        letter-spacing: 0.6px;
+        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        box-shadow: 0 0 20px rgba(102, 126, 234, 0.4),
+                    0 0 40px rgba(217, 70, 239, 0.2),
+                    inset 0 0 20px rgba(255, 255, 255, 0.1);
         text-transform: uppercase;
         cursor: pointer;
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .stButton > button::before {
+        content: '';
+        position: absolute;
+        top: -50%;
+        left: -50%;
+        width: 200%;
+        height: 200%;
+        background: radial-gradient(circle, rgba(255, 255, 255, 0.1) 0%, transparent 70%);
+        animation: pulse-glow 3s ease-in-out infinite;
+    }
+    
+    @keyframes pulse-glow {
+        0%, 100% { transform: scale(1); opacity: 0; }
+        50% { opacity: 1; }
     }
     
     .stButton > button:hover {
-        background: linear-gradient(135deg, #764ba2 0%, #d946ef 100%);
+        background: linear-gradient(135deg, #764ba2 0%, #d946ef 50%, #ff006e 100%);
         border-color: var(--accent-magenta);
-        box-shadow: 0 0 30px rgba(217, 70, 239, 0.5), 0 0 60px rgba(217, 70, 239, 0.2);
-        transform: translateY(-2px);
+        box-shadow: 0 0 30px rgba(217, 70, 239, 0.6), 
+                    0 0 60px rgba(255, 0, 110, 0.3),
+                    inset 0 0 20px rgba(255, 255, 255, 0.15);
+        transform: translateY(-3px) scale(1.05);
     }
     
     .stButton > button:active {
-        transform: translateY(0);
+        transform: translateY(-1px) scale(1.02);
     }
     
     /* Input fields */
     input, textarea, select {
-        background: rgba(17, 24, 41, 0.6) !important;
-        border: 1px solid rgba(0, 217, 255, 0.2) !important;
-        border-radius: 10px !important;
+        background: rgba(17, 24, 41, 0.5) !important;
+        border: 1.5px solid rgba(0, 217, 255, 0.2) !important;
+        border-radius: 12px !important;
         color: var(--text-primary) !important;
-        padding: 0.75rem !important;
+        padding: 0.85rem !important;
         font-size: 0.95rem !important;
-        transition: all 0.3s ease;
-        backdrop-filter: blur(5px);
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+        backdrop-filter: blur(10px) !important;
+        -webkit-backdrop-filter: blur(10px) !important;
+        box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.3) !important;
     }
     
     input:focus, textarea:focus, select:focus {
         border-color: var(--accent-cyan) !important;
-        box-shadow: 0 0 20px rgba(0, 217, 255, 0.3), inset 0 0 10px rgba(0, 217, 255, 0.05) !important;
+        box-shadow: 0 0 25px rgba(0, 217, 255, 0.4), 
+                    inset 0 0 20px rgba(0, 217, 255, 0.08),
+                    inset 0 0 20px rgba(0, 0, 0, 0.3) !important;
         outline: none !important;
         background: rgba(17, 24, 41, 0.8) !important;
+        transform: translateY(-2px);
     }
     
     /* Tabs styling */
     [role="tablist"] {
-        background: rgba(26, 31, 58, 0.4);
-        backdrop-filter: blur(10px);
-        border: 1px solid rgba(0, 217, 255, 0.1);
-        border-radius: 12px;
-        padding: 0.5rem;
+        background: rgba(26, 31, 58, 0.3);
+        backdrop-filter: blur(15px);
+        -webkit-backdrop-filter: blur(15px);
+        border: 1px solid rgba(0, 217, 255, 0.15);
+        border-radius: 14px;
+        padding: 0.7rem;
         border-bottom: none;
-        gap: 0.5rem;
+        gap: 0.7rem;
+        box-shadow: 0 0 20px rgba(0, 217, 255, 0.1), inset 0 0 30px rgba(0, 217, 255, 0.03);
     }
     
     [role="tab"] {
         background: rgba(17, 24, 41, 0.5);
         color: var(--text-secondary);
-        border: 1px solid rgba(0, 217, 255, 0.1);
+        border: 1px solid rgba(0, 217, 255, 0.12);
         border-radius: 10px;
-        padding: 0.75rem 1.5rem;
+        padding: 0.8rem 1.6rem;
         font-weight: 600;
         font-size: 0.9rem;
-        transition: all 0.3s ease;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         letter-spacing: 0.3px;
+        cursor: pointer;
     }
     
     [role="tab"]:hover {
         background: rgba(26, 31, 58, 0.6);
         border-color: rgba(0, 217, 255, 0.3);
+        box-shadow: 0 0 15px rgba(0, 217, 255, 0.15);
     }
     
     [aria-selected="true"] {
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
         color: var(--text-primary) !important;
         border-color: var(--accent-cyan) !important;
-        box-shadow: 0 0 20px rgba(102, 126, 234, 0.4), inset 0 0 10px rgba(0, 217, 255, 0.05) !important;
+        box-shadow: 0 0 25px rgba(102, 126, 234, 0.5), 
+                    inset 0 0 15px rgba(0, 217, 255, 0.1) !important;
     }
     
     /* File uploader */
@@ -477,6 +559,33 @@ st.markdown("""
 # ═════════════════════════════════════════════════════════════════════════════
 
 init_session()
+
+# ═════════════════════════════════════════════════════════════════════════════
+# GEMINI API SETUP
+# ═════════════════════════════════════════════════════════════════════════════
+# Check if API key is provided in sidebar
+if "gemini_api_key" not in st.session_state:
+    st.session_state.gemini_api_key = os.getenv("GEMINI_API_KEY", "")
+
+# Add API key input in sidebar
+with st.sidebar:
+    st.markdown("### 🔑 Gemini API Configuration")
+    api_key_input = st.text_input(
+        "Enter your Gemini API Key",
+        value=st.session_state.gemini_api_key,
+        type="password",
+        help="Get your key from https://ai.google.dev"
+    )
+    
+    if api_key_input:
+        st.session_state.gemini_api_key = api_key_input
+        os.environ["GEMINI_API_KEY"] = api_key_input
+        st.success("✅ Gemini API Key configured!")
+    elif os.getenv("GEMINI_API_KEY"):
+        os.environ["GEMINI_API_KEY"] = os.getenv("GEMINI_API_KEY")
+        st.info("ℹ️ Using GEMINI_API_KEY from environment")
+    else:
+        st.warning("⚠️ Gemini API Key not set. Analysis features will be limited.")
 
 if not is_authenticated():
     show_login_page()
