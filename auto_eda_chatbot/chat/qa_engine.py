@@ -94,31 +94,72 @@ def retrieve_from_dataset(df, question):
                 else:
                     return f"✓ {col}: {len(values)} unique values"
 
-    # Handle individual row lookups first (high priority)
-    # IMPORTANT: Extract entity FIRST, then use it (never pass full question to Pandas)
-    for id_col in df.columns:
-        if id_col in ['name', 'id', 'employee', 'person', 'user']:
-            # Get available names for better error messages
-            available_names = df[id_col].unique().tolist()
-            
-            # EXTRACT entity first - don't iterate through names searching in question
-            extracted_entity = extract_name(question, df)
-            print(f"DEBUG NAME: {extracted_entity}")  # Nuclear debug line
-            
-            if extracted_entity:
-                # Found entity - now find what column they're asking about
+    # SCOPE BINDING: Extract person name FIRST to determine aggregation scope
+    extracted_entity = extract_name(question, df)
+    print(f"DEBUG NAME: {extracted_entity}")
+    
+    if extracted_entity:
+        # Person found - bind statistics to this person's data, NOT global data
+        # "average salary of arun" → arun's average (or single value if only one row)
+        # NOT global average
+        
+        numeric_cols = df.select_dtypes(include=['number']).columns.tolist()
+        
+        # Check if asking for statistics on this person
+        if "average" in q or "mean" in q:
+            for col in numeric_cols:
+                col_lower = col.lower()
+                # Use word boundary matching to avoid false positives (e.g., "age" in "arun")
+                # Check if column name is a whole word in the question
+                if " " + col_lower + " " in " " + q + " ":
+                    # Get values for THIS PERSON only
+                    person_data = df[df['name'].str.lower() == extracted_entity.lower()][col]
+                    if len(person_data) > 1:
+                        # Multiple records - compute average
+                        avg_val = person_data.mean()
+                        return f"✓ {extracted_entity}'s average {col}: {avg_val:.2f}"
+                    elif len(person_data) == 1:
+                        # Only one record - average is not applicable
+                        value = person_data.iloc[0]
+                        return f"✓ {extracted_entity} has only one record: {col} = {value} (average not applicable for single record)"
+                    else:
+                        # No records found
+                        return f"❌ No records found for {extracted_entity}"
+        
+        if "max" in q or "maximum" in q or "highest" in q:
+            for col in numeric_cols:
+                col_lower = col.lower()
+                if col_lower in q:
+                    person_data = df[df['name'].str.lower() == extracted_entity.lower()][col]
+                    if len(person_data) > 0:
+                        return f"✓ {extracted_entity}'s max {col}: {person_data.max()}"
+        
+        if "min" in q or "minimum" in q or "lowest" in q:
+            for col in numeric_cols:
+                col_lower = col.lower()
+                if col_lower in q:
+                    person_data = df[df['name'].str.lower() == extracted_entity.lower()][col]
+                    if len(person_data) > 0:
+                        return f"✓ {extracted_entity}'s min {col}: {person_data.min()}"
+        
+        # If no statistics keyword, just return the person's column value
+        for id_col in df.columns:
+            if id_col in ['name', 'id', 'employee', 'person', 'user']:
                 for col in df.columns:
-                    if col != id_col and col in q:
-                        mask = df[id_col] == extracted_entity
-                        if mask.any():
-                            result_value = df.loc[mask, col].values[0]
-                            return f"✓ {extracted_entity}'s {col}: {result_value}"
-            
-            # If we got here, no name was matched - provide helpful error
-            # Show what they asked for vs. what's available
-            return f"❌ Person not found. Available: {', '.join(available_names)}"
+                    if col != id_col:
+                        col_lower = col.lower()
+                        q_words = q.split()
+                        if col_lower in q_words or col_lower in q.replace("'s", "").replace("of", "").replace("what", "").replace("is", "").replace("the", "").replace("a", ""):
+                            mask = df[id_col].str.lower() == extracted_entity.lower()
+                            if mask.any():
+                                result_value = df.loc[mask, col].values[0]
+                                return f"✓ {extracted_entity}'s {col}: {result_value}"
+        
+        # If we have a person but no specific column match, return error
+        return f"❌ {extracted_entity} found but cannot determine what you're asking for"
 
-    # Handle statistics queries (min, max, average, mean)
+    # NO person name found - compute statistics on ENTIRE dataset (global scope)
+    # "what is the average salary" → global average
     numeric_cols = df.select_dtypes(include=['number']).columns.tolist()
     
     if "average" in q or "mean" in q:
@@ -127,13 +168,13 @@ def retrieve_from_dataset(df, question):
             if col_lower in q:
                 return f"✓ Average {col}: {df[col].mean():.2f}"
     
-    if "max" in q or "maximum" in q:
+    if "max" in q or "maximum" in q or "highest" in q:
         for col in numeric_cols:
             col_lower = col.lower()
             if col_lower in q:
                 return f"✓ Max {col}: {df[col].max()}"
     
-    if "min" in q or "minimum" in q:
+    if "min" in q or "minimum" in q or "lowest" in q:
         for col in numeric_cols:
             col_lower = col.lower()
             if col_lower in q:
@@ -150,6 +191,15 @@ def retrieve_from_dataset(df, question):
             col_lower = col.lower()
             if col_lower in q:
                 return f"✓ Count of {col}: {df[col].nunique()} unique values"
+
+
+
+
+    # Last resort: check if someone is asking for a person but extract_name failed
+    for id_col in df.columns:
+        if id_col in ['name', 'id', 'employee', 'person', 'user']:
+            available_names = df[id_col].unique().tolist()
+            return f"❌ Person not found. Available: {', '.join(available_names)}"
 
     return "❌ Cannot parse question"
 
@@ -220,19 +270,20 @@ def answer_question(df, question):
 
 
 def ask_llm_for_analysis(question, df):
-    """Call LLM for analysis - only summaries, no raw data. Dataset-agnostic."""
-    print(">>> ROUTED TO LLM <<<")  # DEBUG LINE - MANDATORY
+    """Call Gemini API for analysis - only summaries, no raw data. Dataset-agnostic."""
+    print(">>> ROUTED TO GEMINI <<<")  # DEBUG LINE - MANDATORY
     
     try:
-        from llama_cpp import Llama
+        import google.generativeai as genai
         
-        # Find model path
-        current_dir = os.path.dirname(os.path.abspath(__file__))
-        app_root = os.path.dirname(current_dir)
-        model_path = os.path.join(app_root, "models", "TinyLlama-1.1B-Chat-Q4_K_M.gguf")
-        
-        if not os.path.exists(model_path):
+        # Configure Gemini with API key from environment
+        api_key = os.getenv("GEMINI_API_KEY")
+        if not api_key:
+            print("ERROR: GEMINI_API_KEY environment variable not set")
             return None
+        
+        genai.configure(api_key=api_key)
+        model = genai.GenerativeModel("gemini-1.5-flash")
         
         # Build dataset-agnostic context with only summaries
         context = f"Dataset: {len(df)} rows, {len(df.columns)} columns\n\n"
@@ -257,11 +308,12 @@ def ask_llm_for_analysis(question, df):
         context += "DETAILED STATISTICS:\n"
         context += df.describe(include='all').to_string()
         
-        prompt = f"""You are a data analyst.
+        prompt = f"""You are a professional data analyst.
 Only use the dataset information below.
 Answer the user's question based ONLY on the provided data.
 Do NOT invent data or statistics.
-Be concise and accurate.
+Be concise, logical, and accurate.
+Provide structured insights.
 
 DATASET INFORMATION:
 {context}
@@ -271,17 +323,10 @@ USER QUESTION:
 
 ANSWER:"""
         
-        llm = Llama(
-            model_path=model_path,
-            n_ctx=512,
-            n_threads=4,
-            verbose=False
-        )
-        
-        response = llm(prompt, max_tokens=150, temperature=0.2)
-        return response['choices'][0]['text'].strip()
+        response = model.generate_content(prompt)
+        return response.text.strip()
     
     except Exception as e:
-        print(f"LLM Error: {str(e)}")
+        print(f"Gemini Error: {str(e)}")
         return None
 

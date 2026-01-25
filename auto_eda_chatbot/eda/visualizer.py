@@ -3,31 +3,24 @@ import seaborn as sns
 import streamlit as st
 import pandas as pd
 import numpy as np
+import sys
+from pathlib import Path
 
-# Professional color palette - Dark theme with neon accents
-COLORS = {
-    'primary': '#667eea',
-    'secondary': '#764ba2',
-    'accent_cyan': '#00d9ff',
-    'accent_teal': '#00f5dd',
-    'accent_magenta': '#d946ef',
-    'success': '#10b981',
-    'danger': '#ef4444',
-    'light': '#f3f4f6',
-    'dark': '#0a0e27'
-}
+# Add parent directory to path
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
-# Set professional dark style for matplotlib
-plt.style.use('dark_background')
-sns.set_palette("husl")
-plt.rcParams['figure.facecolor'] = '#0a0e27'
-plt.rcParams['axes.facecolor'] = '#111829'
-plt.rcParams['axes.edgecolor'] = '#00d9ff'
-plt.rcParams['grid.color'] = '#667eea'
-plt.rcParams['grid.alpha'] = 0.1
-plt.rcParams['text.color'] = '#ffffff'
-plt.rcParams['xtick.color'] = '#ffffff'
-plt.rcParams['ytick.color'] = '#ffffff'
+# Import professional color palette
+from .eda_palette import EDAPalette, EDAPaletteConfigurator
+from .advanced_charts import (create_area_chart, create_column_chart, create_doughnut_chart,
+                              create_bubble_chart, create_radar_chart, create_stacked_bar_chart,
+                              create_gauge_chart, create_comparison_chart, create_line_area_combination)
+from utils.ui import show_chart, show_chart_wide, show_chart_square
+
+# Auto-configure matplotlib with professional palette
+EDAPaletteConfigurator.apply_dark_theme()
+
+# Set futuristic dark style for matplotlib - High quality rendering
+# (Already configured by EDAPaletteConfigurator.apply_dark_theme() above)
 
 def sanitize_label(label):
     """Escape special characters in labels for matplotlib mathtext rendering"""
@@ -57,13 +50,14 @@ def show_charts(df):
         categorical_df = df.select_dtypes(include=['object'])
         
         # Create tabs for different visualization types
-        tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
+        tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs([
             "📊 Distribution", 
             "🔗 Relationships", 
             "🏷️ Categorical", 
             "🔥 Correlation", 
             "📈 Summary", 
             "🎨 Advanced",
+            "🌈 Extended Charts",
             "🔍 Data Quality"
         ])
         
@@ -77,18 +71,55 @@ def show_charts(df):
                     
                     # Histogram with KDE
                     with col1:
-                        st.markdown("#### 📈 Histogram with KDE")
+                        st.markdown("#### 📈 Histogram")
                         for col in numeric_df.columns[:2]:
                             try:
-                                fig, ax = plt.subplots(figsize=(9, 5))
-                                sns.histplot(numeric_df[col], kde=True, ax=ax, color=COLORS['accent_cyan'], alpha=0.7, edgecolor=COLORS['accent_magenta'], line_kws={'linewidth': 2})
+                                fig, ax = plt.subplots(figsize=(5, 3))
+                                col_data = numeric_df[col].dropna()
+                                
+                                if len(col_data) < 2:
+                                    continue
+                                
+                                # Create histogram with gradient color
+                                n, bins, patches = ax.hist(col_data, bins=30, alpha=0.8, edgecolor='#00d9ff', linewidth=1.5)
+                                
+                                # Apply neon plasma gradient
+                                cm = plt.cm.get_cmap('plasma')
+                                for i, patch in enumerate(patches):
+                                    patch.set_facecolor(cm(i/len(patches)))
+                                    patch.set_alpha(0.85)
+                                
+                                # Add KDE curve if possible
+                                try:
+                                    from scipy.stats import gaussian_kde
+                                    if len(col_data) > 1:
+                                        density = gaussian_kde(col_data)
+                                        xs = np.linspace(col_data.min(), col_data.max(), 200)
+                                        kde_values = density(xs) * len(col_data) * (bins[1]-bins[0])
+                                        ax.plot(xs, kde_values, color='#00d9ff', linewidth=3, label='KDE', alpha=0.9)
+                                except:
+                                    pass
+                                
                                 ax.set_facecolor('#111829')
-                                ax.grid(True, alpha=0.1, color=COLORS['primary'])
+                                ax.grid(True, alpha=0.15, color='#667eea', linestyle='--')
+                                ax.set_axisbelow(True)
                                 safe_col = sanitize_label(col)
-                                ax.set_title(f"Distribution of {safe_col}", fontsize=12, fontweight='bold', color=COLORS['accent_cyan'])
-                                ax.set_xlabel(safe_col, color=COLORS['accent_teal'])
-                                ax.set_ylabel("Frequency", color=COLORS['accent_teal'])
-                                st.pyplot(fig, use_container_width=True)
+                                ax.set_title(f"Distribution of {safe_col}", fontsize=13, fontweight='bold', color='#00d9ff', pad=15)
+                                ax.set_xlabel(safe_col, color='#00d9ff', fontweight='bold', fontsize=11)
+                                ax.set_ylabel("Frequency", color='#00d9ff', fontweight='bold', fontsize=11)
+                                
+                                # Only show legend if there's content
+                                handles, labels = ax.get_legend_handles_labels()
+                                if handles:
+                                    ax.legend(fontsize=10, loc='upper right', framealpha=0.9)
+                                
+                                # Style spines
+                                for spine in ax.spines.values():
+                                    spine.set_edgecolor('#00d9ff')
+                                    spine.set_linewidth(1.5)
+                                    spine.set_alpha(0.3)
+                                
+                                show_chart(fig)
                                 plt.close()
                             except Exception as e:
                                 st.warning(f"Could not render histogram for {col}")
@@ -106,7 +137,7 @@ def show_charts(df):
                             ax.set_ylabel("Value")
                             ax.legend(fontsize=9)
                             ax.grid(True, alpha=0.3)
-                            st.pyplot(fig, use_container_width=True)
+                            show_chart(fig)
                             plt.close()
                         except Exception as e:
                             st.warning("Could not render trend chart")
@@ -125,26 +156,38 @@ def show_charts(df):
                     
                     # Scatter Plot with gradient by value
                     with col1:
-                        st.markdown("#### 📍 Scatter Plot (Color-Coded by Value)")
+                        st.markdown("#### 📍 Scatter Plot (Neon Gradient)")
                         try:
                             x_col = numeric_df.columns[0]
                             y_col = numeric_df.columns[1]
-                            fig, ax = plt.subplots(figsize=(9, 6))
-                            # Use value magnitude for color intensity
+                            fig, ax = plt.subplots(figsize=(5, 3.5))
+                            
+                            # Use value magnitude for color intensity with neon gradient
                             values = numeric_df[y_col].values
                             scatter = ax.scatter(numeric_df[x_col], numeric_df[y_col], 
-                                              c=values, cmap='coolwarm', alpha=0.7, s=100,
-                                              edgecolors='white', linewidth=0.5)
-                            cbar = plt.colorbar(scatter, ax=ax, label='Value Intensity')
-                            cbar.set_label('Low → High', color=COLORS['accent_teal'], fontweight='bold')
+                                              c=values, cmap='twilight', alpha=0.8, s=120,
+                                              edgecolors='#00d9ff', linewidth=1, vmin=values.min(), vmax=values.max())
+                            
+                            cbar = plt.colorbar(scatter, ax=ax)
+                            cbar.set_label('Value Intensity', color='#00d9ff', fontweight='bold', fontsize=10)
+                            cbar.ax.tick_params(colors='#00d9ff', labelsize=9)
+                            
                             safe_x = sanitize_label(x_col)
                             safe_y = sanitize_label(y_col)
-                            ax.set_xlabel(safe_x, fontweight='bold', color=COLORS['accent_teal'])
-                            ax.set_ylabel(safe_y, fontweight='bold', color=COLORS['accent_teal'])
-                            ax.set_title(f"{safe_x} vs {safe_y}", fontsize=12, fontweight='bold', color=COLORS['accent_cyan'])
+                            ax.set_xlabel(safe_x, fontweight='bold', color='#00d9ff', fontsize=11)
+                            ax.set_ylabel(safe_y, fontweight='bold', color='#00d9ff', fontsize=11)
+                            ax.set_title(f"{safe_x} vs {safe_y}", fontsize=13, fontweight='bold', color='#00d9ff', pad=15)
                             ax.set_facecolor('#111829')
-                            ax.grid(True, alpha=0.1, color=COLORS['primary'])
-                            st.pyplot(fig, use_container_width=True)
+                            ax.grid(True, alpha=0.15, color='#667eea', linestyle='--')
+                            ax.set_axisbelow(True)
+                            
+                            # Enhance spines
+                            for spine in ax.spines.values():
+                                spine.set_edgecolor('#00d9ff')
+                                spine.set_linewidth(1.5)
+                                spine.set_alpha(0.3)
+                            
+                            show_chart(fig)
                             plt.close()
                         except Exception as e:
                             st.warning(f"Scatter plot error: {str(e)}")
@@ -153,16 +196,26 @@ def show_charts(df):
                     with col2:
                         st.markdown("#### 🔥 Correlation (Strong ↔ Weak)")
                         try:
-                            fig, ax = plt.subplots(figsize=(9, 6))
+                            fig, ax = plt.subplots(figsize=(5, 4))
                             corr_data = numeric_df.corr()
+                            
+                            # Create custom neon colormap
                             sns.heatmap(corr_data, annot=True, cmap="coolwarm", ax=ax, fmt='.2f', 
-                                       cbar_kws={'label': 'Correlation'}, square=True, linewidths=1.5,
-                                       linecolor='white', vmin=-1, vmax=1, annot_kws={'fontweight': 'bold'})
+                                       cbar_kws={'label': 'Correlation', 'shrink': 0.8},
+                                       square=True, linewidths=2, linecolor='#111829',
+                                       vmin=-1, vmax=1, annot_kws={'fontweight': 'bold', 'fontsize': 10, 'color': 'white'})
+                            
                             ax.set_facecolor('#111829')
-                            ax.set_title("Strong → Weak Correlation", fontsize=12, fontweight='bold', color=COLORS['accent_cyan'])
-                            ax.set_xticklabels(ax.get_xticklabels(), color=COLORS['accent_teal'], fontweight='bold', rotation=45, ha='right')
-                            ax.set_yticklabels(ax.get_yticklabels(), color=COLORS['accent_teal'], fontweight='bold', rotation=0)
-                            st.pyplot(fig, use_container_width=True)
+                            ax.set_title("Correlation Matrix - Strong → Weak", fontsize=13, fontweight='bold', color='#00d9ff', pad=15)
+                            ax.set_xticklabels(ax.get_xticklabels(), color='#00d9ff', fontweight='bold', rotation=45, ha='right', fontsize=10)
+                            ax.set_yticklabels(ax.get_yticklabels(), color='#00d9ff', fontweight='bold', rotation=0, fontsize=10)
+                            
+                            # Enhance colorbar
+                            cbar = ax.collections[0].colorbar
+                            cbar.ax.tick_params(colors='#00d9ff', labelsize=9)
+                            cbar.set_label('Correlation', color='#00d9ff', fontweight='bold', fontsize=10)
+                            
+                            show_chart(fig)
                             plt.close()
                         except Exception as e:
                             st.warning(f"Correlation plot error: {str(e)}")
@@ -179,28 +232,49 @@ def show_charts(df):
                 try:
                     for idx, col in enumerate(categorical_df.columns[:4]):
                         try:
-                            fig, ax = plt.subplots(figsize=(10, 5))
+                            fig, ax = plt.subplots(figsize=(5, 3.5))
                             top_vals = categorical_df[col].value_counts().head(10).sort_values(ascending=False)
-                            # Create gradient from warm (high) to cool (low)
-                            colors_list = plt.cm.coolwarm(np.linspace(0.95, 0.05, len(top_vals)))
+                            
+                            # Create neon gradient from cyan to magenta
+                            n_bars = len(top_vals)
+                            colors_list = []
+                            for i in range(n_bars):
+                                # Interpolate between cyan and magenta
+                                ratio = i / max(n_bars - 1, 1)
+                                r = int(0 + (217 - 0) * ratio)  # 0 to 217
+                                g = int(217 + (70 - 217) * ratio)  # 217 to 70
+                                b = int(255 + (239 - 255) * ratio)  # 255 to 239
+                                colors_list.append(f'#{r:02x}{g:02x}{b:02x}')
+                            
                             bars = ax.bar(range(len(top_vals)), top_vals.values, color=colors_list, 
-                                        edgecolor='white', linewidth=1.5, alpha=0.85)
-                            # Add value labels on bars
+                                        edgecolor='#00d9ff', linewidth=2, alpha=0.9, width=0.7)
+                            
+                            # Add value labels on bars with glow effect
                             for bar, val in zip(bars, top_vals.values):
                                 height = bar.get_height()
                                 ax.text(bar.get_x() + bar.get_width()/2., height,
-                                       f'{int(val)}', ha='center', va='bottom', fontsize=9, 
-                                       color=COLORS['accent_cyan'], fontweight='bold')
+                                       f'{int(val)}', ha='center', va='bottom', fontsize=10, 
+                                       color='#00d9ff', fontweight='bold',
+                                       bbox=dict(boxstyle='round,pad=0.3', facecolor='#111829', edgecolor='#00d9ff', alpha=0.7, linewidth=1))
+                            
                             safe_col = sanitize_label(col)
-                            ax.set_title(f"{safe_col} (Highest → Lowest)", fontsize=12, fontweight='bold', color=COLORS['accent_cyan'])
-                            ax.set_xlabel(safe_col, color=COLORS['accent_teal'], fontweight='bold')
-                            ax.set_ylabel("Count", color=COLORS['accent_teal'], fontweight='bold')
+                            ax.set_title(f"{safe_col} (Highest → Lowest)", fontsize=13, fontweight='bold', color='#00d9ff', pad=15)
+                            ax.set_xlabel(safe_col, color='#00d9ff', fontweight='bold', fontsize=11)
+                            ax.set_ylabel("Count", color='#00d9ff', fontweight='bold', fontsize=11)
                             ax.set_xticks(range(len(top_vals)))
-                            ax.set_xticklabels([str(x)[:15] for x in top_vals.index], rotation=45, ha='right', color=COLORS['accent_teal'])
+                            ax.set_xticklabels([str(x)[:15] for x in top_vals.index], rotation=45, ha='right', color='#00d9ff', fontsize=10)
                             ax.set_facecolor('#111829')
-                            ax.tick_params(colors=COLORS['accent_teal'])
-                            ax.grid(True, alpha=0.1, axis='y', color=COLORS['primary'])
-                            st.pyplot(fig, use_container_width=True)
+                            ax.tick_params(colors='#00d9ff', labelsize=10)
+                            ax.grid(True, alpha=0.15, axis='y', color='#667eea', linestyle='--')
+                            ax.set_axisbelow(True)
+                            
+                            # Enhance spines
+                            for spine in ax.spines.values():
+                                spine.set_edgecolor('#00d9ff')
+                                spine.set_linewidth(1.5)
+                                spine.set_alpha(0.3)
+                            
+                            show_chart(fig)
                             plt.close()
                         except Exception as e:
                             st.warning(f"Could not render chart for {col}")
@@ -215,19 +289,30 @@ def show_charts(df):
             
             if not numeric_df.empty and len(numeric_df.columns) > 1:
                 try:
-                    fig, ax = plt.subplots(figsize=(12, 9))
+                    fig, ax = plt.subplots(figsize=(6, 5))
                     corr_matrix = numeric_df.corr()
                     # Use coolwarm to show strong positive (warm/red) to strong negative (cool/blue)
                     sns.heatmap(corr_matrix, annot=True, cmap="coolwarm", ax=ax, fmt='.2f', 
-                               square=True, linewidths=2, linecolor='white',
-                               cbar_kws={'label': 'Correlation (-1 to +1)', 'shrink': 0.8},
-                               vmin=-1, vmax=1, annot_kws={'fontsize': 10, 'fontweight': 'bold'})
+                               square=True, linewidths=2.5, linecolor='#111829',
+                               cbar_kws={'label': 'Correlation (-1 to +1)', 'shrink': 0.85},
+                               vmin=-1, vmax=1, annot_kws={'fontsize': 11, 'fontweight': 'bold', 'color': 'white'})
+                    
                     ax.set_facecolor('#111829')
-                    ax.set_title('Correlation Matrix - High ↔ Low Correlation', fontsize=13, fontweight='bold', color=COLORS['accent_cyan'], pad=20)
-                    # Color the axis labels
-                    ax.set_xticklabels(ax.get_xticklabels(), color=COLORS['accent_teal'], fontweight='bold', rotation=45, ha='right')
-                    ax.set_yticklabels(ax.get_yticklabels(), color=COLORS['accent_teal'], fontweight='bold', rotation=0)
-                    st.pyplot(fig, use_container_width=True)
+                    ax.set_title('Correlation Matrix - High ↔ Low Correlation', fontsize=14, fontweight='bold', 
+                                color='#00d9ff', pad=20)
+                    
+                    # Color the axis labels with neon
+                    ax.set_xticklabels(ax.get_xticklabels(), color='#00d9ff', fontweight='bold', 
+                                      rotation=45, ha='right', fontsize=11)
+                    ax.set_yticklabels(ax.get_yticklabels(), color='#00d9ff', fontweight='bold', 
+                                      rotation=0, fontsize=11)
+                    
+                    # Enhance colorbar
+                    cbar = ax.collections[0].colorbar
+                    cbar.ax.tick_params(colors='#00d9ff', labelsize=10)
+                    cbar.set_label('Correlation', color='#00d9ff', fontweight='bold', fontsize=11)
+                    
+                    show_chart(fig)
                     plt.close()
                 except Exception as e:
                     st.error(f"Correlation heatmap error: {str(e)}")
@@ -280,14 +365,39 @@ def show_charts(df):
                     st.markdown("#### 📦 Box Plot (Outliers)")
                     if not numeric_df.empty and len(numeric_df.columns) > 0:
                         try:
-                            fig, ax = plt.subplots(figsize=(9, 5))
-                            numeric_df.iloc[:, :min(3, len(numeric_df.columns))].boxplot(ax=ax, patch_artist=True)
+                            fig, ax = plt.subplots(figsize=(5, 3.5))
+                            bp = numeric_df.iloc[:, :min(3, len(numeric_df.columns))].boxplot(ax=ax, patch_artist=True, 
+                                                                                                widths=0.6, return_type='dict')
+                            
+                            # Style box plot with neon colors
                             for patch in ax.artists:
-                                patch.set_facecolor(COLORS['primary'])
-                                patch.set_alpha(0.7)
-                            ax.set_title("Box Plot - Outlier Detection", fontsize=12, fontweight='bold')
-                            ax.set_ylabel("Values")
-                            st.pyplot(fig, use_container_width=True)
+                                patch.set_facecolor('#667eea')
+                                patch.set_edgecolor('#00d9ff')
+                                patch.set_linewidth(2)
+                                patch.set_alpha(0.8)
+                            
+                            # Style whiskers and caps
+                            for whisker in ax.get_lines():
+                                if 'LINEWIDTH' not in str(whisker):
+                                    whisker.set_color('#00d9ff')
+                                    whisker.set_linewidth(2)
+                                    whisker.set_alpha(0.8)
+                            
+                            ax.set_title("Box Plot - Outlier Detection", fontsize=13, fontweight='bold', 
+                                       color='#00d9ff', pad=15)
+                            ax.set_ylabel("Values", color='#00d9ff', fontweight='bold', fontsize=11)
+                            ax.set_facecolor('#111829')
+                            ax.grid(True, alpha=0.15, axis='y', color='#667eea', linestyle='--')
+                            ax.set_axisbelow(True)
+                            ax.tick_params(colors='#00d9ff', labelsize=10)
+                            
+                            # Enhance spines
+                            for spine in ax.spines.values():
+                                spine.set_edgecolor('#00d9ff')
+                                spine.set_linewidth(1.5)
+                                spine.set_alpha(0.3)
+                            
+                            show_chart(fig)
                             plt.close()
                         except Exception as e:
                             st.warning(f"Box plot error: {str(e)}")
@@ -299,13 +409,40 @@ def show_charts(df):
                     st.markdown("#### 🎻 Distribution Plot")
                     if not numeric_df.empty and len(numeric_df.columns) > 0:
                         try:
-                            fig, ax = plt.subplots(figsize=(9, 5))
+                            fig, ax = plt.subplots(figsize=(5, 3.5))
                             col_to_plot = numeric_df.columns[0]
-                            parts = ax.violinplot(numeric_df[col_to_plot].dropna().values, vert=True, showmeans=True, showmedians=True)
+                            parts = ax.violinplot(numeric_df[col_to_plot].dropna().values, vert=True, 
+                                                 showmeans=True, showmedians=True)
+                            
+                            # Style violin plot with neon colors
+                            for pc in parts['bodies']:
+                                pc.set_facecolor('#667eea')
+                                pc.set_edgecolor('#00d9ff')
+                                pc.set_alpha(0.8)
+                                pc.set_linewidth(2)
+                            
+                            for partname in ('cbars', 'cmins', 'cmaxes', 'cmedians', 'cmeans'):
+                                if partname in parts:
+                                    vp = parts[partname]
+                                    vp.set_edgecolor('#00d9ff')
+                                    vp.set_linewidth(2)
+                            
                             safe_col = sanitize_label(col_to_plot)
-                            ax.set_title(f"Violin Plot - {safe_col}", fontsize=12, fontweight='bold')
-                            ax.set_ylabel("Values")
-                            st.pyplot(fig, use_container_width=True)
+                            ax.set_title(f"Violin Plot - {safe_col}", fontsize=13, fontweight='bold', 
+                                       color='#00d9ff', pad=15)
+                            ax.set_ylabel("Values", color='#00d9ff', fontweight='bold', fontsize=11)
+                            ax.set_facecolor('#111829')
+                            ax.grid(True, alpha=0.15, axis='y', color='#667eea', linestyle='--')
+                            ax.set_axisbelow(True)
+                            ax.tick_params(colors='#00d9ff', labelsize=10)
+                            
+                            # Enhance spines
+                            for spine in ax.spines.values():
+                                spine.set_edgecolor('#00d9ff')
+                                spine.set_linewidth(1.5)
+                                spine.set_alpha(0.3)
+                            
+                            show_chart(fig)
                             plt.close()
                         except Exception as e:
                             st.warning(f"Violin plot error: {str(e)}")
@@ -314,8 +451,123 @@ def show_charts(df):
             except Exception as e:
                 st.error(f"Advanced visualization error: {str(e)}")
         
-        # TAB 7: Data Quality Report
+        # TAB 7: Extended Charts (Area, Doughnut, Bubble, Radar, etc.)
         with tab7:
+            st.markdown("### 🌈 Extended Chart Types")
+            
+            if not numeric_df.empty or not categorical_df.empty:
+                # Create sub-tabs for different chart types
+                sub_tab1, sub_tab2, sub_tab3, sub_tab4, sub_tab5, sub_tab6, sub_tab7, sub_tab8 = st.tabs([
+                    "📈 Area", "📊 Column", "🍩 Doughnut", "🫧 Bubble",
+                    "🕷️ Radar", "📚 Stacked Bar", "🔷 Comparison", "⚡ Line-Area"
+                ])
+                
+                # Area Chart
+                with sub_tab1:
+                    st.markdown("#### 📈 Area Chart")
+                    if not numeric_df.empty:
+                        fig = create_area_chart(numeric_df)
+                        if fig:
+                            show_chart(fig)
+                            plt.close()
+                    else:
+                        st.info("📭 No numeric columns for area chart")
+                
+                # Column Chart
+                with sub_tab2:
+                    st.markdown("#### 📊 Column Chart")
+                    if not categorical_df.empty:
+                        col_choice = st.selectbox("Select column:", categorical_df.columns, key="col_chart")
+                        fig = create_column_chart(df, col_choice, top_n=10)
+                        if fig:
+                            show_chart(fig)
+                            plt.close()
+                    elif not numeric_df.empty:
+                        col_choice = st.selectbox("Select numeric column:", numeric_df.columns, key="col_chart_num")
+                        fig = create_column_chart(df, col_choice, top_n=10)
+                        if fig:
+                            show_chart(fig)
+                            plt.close()
+                    else:
+                        st.info("📭 No columns available")
+                
+                # Doughnut Chart
+                with sub_tab3:
+                    st.markdown("#### 🍩 Doughnut Chart")
+                    if not categorical_df.empty:
+                        col_choice = st.selectbox("Select column:", categorical_df.columns, key="doughnut")
+                        fig = create_doughnut_chart(df, col_choice, top_n=8)
+                        if fig:
+                            show_chart(fig)
+                            plt.close()
+                    else:
+                        st.info("📭 No categorical columns for doughnut chart")
+                
+                # Bubble Chart
+                with sub_tab4:
+                    st.markdown("#### 🫧 Bubble Chart")
+                    if len(numeric_df.columns) >= 2:
+                        col1_bubble, col2_bubble = st.columns(2)
+                        with col1_bubble:
+                            x_col = st.selectbox("X-axis:", numeric_df.columns, key="bubble_x")
+                        with col2_bubble:
+                            y_col = st.selectbox("Y-axis:", numeric_df.columns, key="bubble_y", 
+                                               index=min(1, len(numeric_df.columns)-1))
+                        
+                        fig = create_bubble_chart(df, x_col, y_col)
+                        if fig:
+                            show_chart(fig)
+                            plt.close()
+                    else:
+                        st.info("📭 Need at least 2 numeric columns for bubble chart")
+                
+                # Radar Chart
+                with sub_tab5:
+                    st.markdown("#### 🕷️ Radar (Spider) Chart")
+                    if len(numeric_df.columns) >= 3:
+                        fig = create_radar_chart(numeric_df)
+                        if fig:
+                            show_chart(fig)
+                            plt.close()
+                    else:
+                        st.info("📭 Need at least 3 numeric columns for radar chart")
+                
+                # Stacked Bar Chart
+                with sub_tab6:
+                    st.markdown("#### 📚 Stacked Bar Chart")
+                    if len(categorical_df.columns) >= 2:
+                        col_choice = st.selectbox("Main category:", categorical_df.columns, key="stacked")
+                        fig = create_stacked_bar_chart(df, col_choice, top_n=5)
+                        if fig:
+                            show_chart(fig)
+                            plt.close()
+                    else:
+                        st.info("📭 Need at least 2 categorical columns for stacked bar chart")
+                
+                # Comparison Chart
+                with sub_tab7:
+                    st.markdown("#### 🔷 Comparison Chart (Statistics)")
+                    if not numeric_df.empty:
+                        fig = create_comparison_chart(numeric_df)
+                        if fig:
+                            show_chart(fig)
+                            plt.close()
+                    else:
+                        st.info("📭 No numeric columns for comparison chart")
+                
+                # Line-Area Combination
+                with sub_tab8:
+                    st.markdown("#### ⚡ Line-Area Combination")
+                    if not numeric_df.empty:
+                        fig = create_line_area_combination(numeric_df)
+                        if fig:
+                            show_chart(fig)
+                            plt.close()
+                    else:
+                        st.info("📭 No numeric columns for line-area chart")
+        
+        # TAB 8: Data Quality Report
+        with tab8:
             st.markdown("### 🔍 Data Quality Report")
             
             try:
@@ -332,11 +584,31 @@ def show_charts(df):
                     missing_df = missing_df[missing_df['Missing Count'] > 0]
                     
                     if not missing_df.empty:
-                        fig, ax = plt.subplots(figsize=(10, 4))
-                        ax.barh(missing_df['Column'], missing_df['Missing %'], color=COLORS['danger'])
-                        ax.set_xlabel("Missing Percentage (%)")
-                        ax.set_title("Missing Values by Column", fontsize=12, fontweight='bold')
-                        st.pyplot(fig, use_container_width=True)
+                        fig, ax = plt.subplots(figsize=(5, 3.5))
+                        colors_missing = plt.cm.plasma(np.linspace(0, 1, len(missing_df)))
+                        bars = ax.barh(missing_df['Column'], missing_df['Missing %'], color=colors_missing, 
+                                      edgecolor='#00d9ff', linewidth=2, alpha=0.85)
+                        
+                        # Add percentage labels
+                        for i, (idx, row) in enumerate(missing_df.iterrows()):
+                            ax.text(row['Missing %'] + 1, i, f"{row['Missing %']:.1f}%", 
+                                   va='center', color='#00d9ff', fontweight='bold', fontsize=10)
+                        
+                        ax.set_xlabel("Missing Percentage (%)", color='#00d9ff', fontweight='bold', fontsize=11)
+                        ax.set_title("Missing Values by Column", fontsize=13, fontweight='bold', 
+                                   color='#00d9ff', pad=15)
+                        ax.set_facecolor('#111829')
+                        ax.tick_params(colors='#00d9ff', labelsize=10)
+                        ax.grid(True, alpha=0.15, axis='x', color='#667eea', linestyle='--')
+                        ax.set_axisbelow(True)
+                        
+                        # Enhance spines
+                        for spine in ax.spines.values():
+                            spine.set_edgecolor('#00d9ff')
+                            spine.set_linewidth(1.5)
+                            spine.set_alpha(0.3)
+                        
+                        show_chart(fig)
                         plt.close()
                         
                         st.dataframe(missing_df, use_container_width=True)
@@ -399,274 +671,6 @@ def show_charts(df):
     except Exception as e:
         st.error(f"Error generating visualizations: {str(e)}")
         st.info("Please check your data and try again")
-    
-    # TAB 1: Distribution Charts
-    with tab1:
-        st.markdown("### 📊 Distribution Analysis")
-        
-        if not numeric_df.empty:
-            col1, col2 = st.columns(2)
-            
-            # Histogram
-            with col1:
-                st.markdown("#### 📈 Histogram")
-                for col in numeric_df.columns[:3]:  # Show first 3 numeric columns
-                    try:
-                        fig, ax = plt.subplots(figsize=(9, 5))
-                        numeric_df[col].hist(bins=30, ax=ax, edgecolor='black', color=COLORS['primary'], alpha=0.8)
-                        safe_col = sanitize_label(col)
-                        ax.set_title(f"Distribution of {safe_col}", fontsize=14, fontweight='bold', pad=20)
-                        ax.set_xlabel(safe_col, fontsize=11, fontweight='bold')
-                        ax.set_ylabel("Frequency", fontsize=11, fontweight='bold')
-                        ax.grid(True, alpha=0.3, linestyle='--')
-                        ax.spines['top'].set_visible(False)
-                        ax.spines['right'].set_visible(False)
-                        st.pyplot(fig, use_container_width=True)
-                        plt.close()
-                    except Exception as e:
-                        st.warning(f"Could not render histogram for {col}")
-            
-            # Line Chart
-            with col2:
-                st.markdown("#### 📉 Trend Analysis")
-                try:
-                    fig, ax = plt.subplots(figsize=(9, 5))
-                    for col in numeric_df.columns[:3]:
-                        safe_col = sanitize_label(col)
-                        ax.plot(numeric_df[col].values, label=safe_col, linewidth=2.5, marker='o', markersize=4)
-                    ax.set_title("Data Trends", fontsize=14, fontweight='bold', pad=20)
-                    ax.set_xlabel("Index", fontsize=11, fontweight='bold')
-                    ax.set_ylabel("Value", fontsize=11, fontweight='bold')
-                    ax.legend(loc='best', fontsize=10)
-                    ax.grid(True, alpha=0.3, linestyle='--')
-                    ax.spines['top'].set_visible(False)
-                    ax.spines['right'].set_visible(False)
-                    st.pyplot(fig, use_container_width=True)
-                    plt.close()
-                except Exception as e:
-                    st.warning("Could not render trend chart")
-    
-    # TAB 2: Relationships
-    with tab2:
-        st.markdown("### 🔗 Relationships Analysis")
-        
-        if len(numeric_df.columns) >= 2:
-            col1, col2 = st.columns(2)
-            
-            # Scatter Plot
-            with col1:
-                st.markdown("#### 📍 Scatter Plot")
-                if len(numeric_df.columns) >= 2:
-                    try:
-                        x_col = numeric_df.columns[0]
-                        y_col = numeric_df.columns[1]
-                        fig, ax = plt.subplots(figsize=(9, 6))
-                        ax.scatter(numeric_df[x_col], numeric_df[y_col], alpha=0.6, s=100, color=COLORS['secondary'], edgecolors='black', linewidth=0.5)
-                        safe_x = sanitize_label(x_col)
-                        safe_y = sanitize_label(y_col)
-                        ax.set_xlabel(safe_x, fontsize=11, fontweight='bold')
-                        ax.set_ylabel(safe_y, fontsize=11, fontweight='bold')
-                        ax.set_title(f"{safe_x} vs {safe_y}", fontsize=14, fontweight='bold', pad=20)
-                        ax.grid(True, alpha=0.3, linestyle='--')
-                        ax.spines['top'].set_visible(False)
-                        ax.spines['right'].set_visible(False)
-                        st.pyplot(fig, use_container_width=True)
-                        plt.close()
-                    except Exception as e:
-                        st.warning("Could not render scatter plot")
-            
-            # Heatmap (Correlation)
-            with col2:
-                st.markdown("#### 🔥 Correlation Matrix")
-                if not numeric_df.empty:
-                    try:
-                        fig, ax = plt.subplots(figsize=(9, 6))
-                        sns.heatmap(numeric_df.corr(), annot=True, cmap="coolwarm", ax=ax, fmt='.2f', 
-                                   cbar_kws={'label': 'Correlation'}, square=True, linewidths=1, linecolor='white')
-                        ax.set_title("Correlation Heatmap", fontsize=14, fontweight='bold', pad=20)
-                        st.pyplot(fig, use_container_width=True)
-                        plt.close()
-                    except Exception as e:
-                        st.warning("Could not render heatmap")
-    
-    # TAB 3: Categorical Analysis
-    with tab3:
-        st.markdown("### 🏷️ Categorical Analysis")
-        
-        if not categorical_df.empty:
-            col1, col2 = st.columns(2)
-            
-            # Bar Chart
-            with col1:
-                st.markdown("#### 📊 Bar Chart")
-                for col in categorical_df.columns[:2]:
-                    try:
-                        fig, ax = plt.subplots(figsize=(9, 5))
-                        top_vals = categorical_df[col].value_counts().head(10)
-                        bars = ax.bar(range(len(top_vals)), top_vals.values, color=COLORS['accent'], edgecolor='black', linewidth=1.5, alpha=0.85)
-                        safe_col = sanitize_label(col)
-                        ax.set_title(f"Bar Chart: {safe_col}", fontsize=14, fontweight='bold', pad=20)
-                        ax.set_xlabel(safe_col, fontsize=11, fontweight='bold')
-                        ax.set_ylabel("Count", fontsize=11, fontweight='bold')
-                        ax.set_xticks(range(len(top_vals)))
-                        ax.set_xticklabels([str(x)[:15] for x in top_vals.index], rotation=45, ha='right')
-                        ax.grid(True, alpha=0.3, axis='y', linestyle='--')
-                        ax.spines['top'].set_visible(False)
-                        ax.spines['right'].set_visible(False)
-                        st.pyplot(fig, use_container_width=True)
-                        plt.close()
-                    except Exception as e:
-                        st.warning(f"Could not render bar chart for {col}")
-            
-            # Pie Chart
-            with col2:
-                st.markdown("#### 🥧 Pie Chart")
-                if len(categorical_df.columns) > 0:
-                    try:
-                        col_name = categorical_df.columns[0]
-                        fig, ax = plt.subplots(figsize=(9, 6))
-                        top_vals = categorical_df[col_name].value_counts().head(8)
-                        colors_pie = plt.cm.Set3(np.linspace(0, 1, len(top_vals)))
-                        wedges, texts, autotexts = ax.pie(top_vals.values, labels=[str(x)[:20] for x in top_vals.index], 
-                                                           autopct='%1.1f%%', colors=colors_pie, startangle=90,
-                                                           textprops={'fontsize': 10, 'fontweight': 'bold'})
-                        safe_col_name = sanitize_label(col_name)
-                        ax.set_title(f"Pie Chart: {safe_col_name}", fontsize=14, fontweight='bold', pad=20)
-                        st.pyplot(fig, use_container_width=True)
-                        plt.close()
-                    except Exception as e:
-                        st.warning("Could not render pie chart")
-        else:
-            st.info("📭 No categorical columns found in dataset")
-    
-    # TAB 4: Detailed Correlation
-    with tab4:
-        st.markdown("### 🔥 Correlation Analysis")
-        
-        if not numeric_df.empty:
-            try:
-                fig, ax = plt.subplots(figsize=(12, 9))
-                corr_matrix = numeric_df.corr()
-                sns.heatmap(corr_matrix, annot=True, cmap="RdYlGn", ax=ax, fmt='.2f', 
-                           square=True, linewidths=2, linecolor='white', cbar_kws={'label': 'Correlation Coefficient'},
-                           vmin=-1, vmax=1)
-                ax.set_title('Correlation Matrix - All Numeric Columns', fontsize=14, fontweight='bold', pad=20)
-                st.pyplot(fig, use_container_width=True)
-                plt.close()
-            except Exception as e:
-                st.warning("Could not render correlation heatmap")
-        else:
-            st.warning("⚠️ No numeric columns for correlation analysis")
-    
-    # TAB 5: Data Summary
-    with tab5:
-        st.markdown("### 📈 Data Summary Statistics")
-        
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            if not numeric_df.empty:
-                st.markdown("#### 🔢 Numeric Columns")
-                numeric_stats = numeric_df.describe().round(2)
-                st.dataframe(numeric_stats, use_container_width=True, height=300)
-        
-        with col2:
-            if not categorical_df.empty:
-                st.markdown("#### 🏷️ Categorical Columns")
-                for col in categorical_df.columns[:5]:
-                    st.markdown(f"**{sanitize_label(col)}**")
-                    st.write(f"Unique: {categorical_df[col].nunique()}")
-                    st.write(categorical_df[col].value_counts().head(3))
-    
-    # TAB 6: Advanced Visualizations
-    with tab6:
-        st.markdown("### 🎨 Advanced Visualizations")
-        
-        col1, col2 = st.columns(2)
-        
-        # Box Plot
-        with col1:
-            st.markdown("#### 📦 Box Plot (Outliers)")
-            if not numeric_df.empty and len(numeric_df.columns) > 0:
-                try:
-                    fig, ax = plt.subplots(figsize=(9, 5))
-                    numeric_df.iloc[:, :3].boxplot(ax=ax, patch_artist=True)
-                    for patch in ax.artists:
-                        patch.set_facecolor(COLORS['primary'])
-                        patch.set_alpha(0.7)
-                    ax.set_title("Box Plot - Outlier Detection", fontsize=14, fontweight='bold', pad=20)
-                    ax.set_ylabel("Values", fontsize=11, fontweight='bold')
-                    ax.grid(True, alpha=0.3, axis='y')
-                    ax.spines['top'].set_visible(False)
-                    ax.spines['right'].set_visible(False)
-                    st.pyplot(fig, use_container_width=True)
-                    plt.close()
-                except Exception as e:
-                    st.info("📭 Box plot unavailable for this data")
-        
-        # Violin Plot
-        with col2:
-            st.markdown("#### 🎻 Violin Plot (Distribution)")
-            if not numeric_df.empty and len(numeric_df.columns) > 0:
-                try:
-                    fig, ax = plt.subplots(figsize=(9, 5))
-                    col_to_plot = numeric_df.columns[0]
-                    parts = ax.violinplot(numeric_df[col_to_plot].dropna().values, vert=True, showmeans=True, showmedians=True)
-                    safe_col = sanitize_label(col_to_plot)
-                    ax.set_title(f"Violin Plot - {safe_col}", fontsize=14, fontweight='bold', pad=20)
-                    ax.set_ylabel("Values", fontsize=11, fontweight='bold')
-                    ax.grid(True, alpha=0.3, axis='y')
-                    ax.spines['top'].set_visible(False)
-                    ax.spines['right'].set_visible(False)
-                    st.pyplot(fig, use_container_width=True)
-                    plt.close()
-                except Exception as e:
-                    st.info("📭 Violin plot unavailable")
-        
-        col3, col4 = st.columns(2)
-        
-        # KDE Plot (Density)
-        with col3:
-            st.markdown("#### 📊 KDE Plot (Density)")
-            if not numeric_df.empty and len(numeric_df.columns) > 0:
-                try:
-                    fig, ax = plt.subplots(figsize=(9, 5))
-                    for idx, col in enumerate(numeric_df.columns[:2]):
-                        safe_col = sanitize_label(col)
-                        numeric_df[col].plot(kind='density', ax=ax, label=safe_col, linewidth=2.5, color=COLORS['primary'] if idx == 0 else COLORS['secondary'])
-                    ax.set_title("Kernel Density Estimation", fontsize=14, fontweight='bold', pad=20)
-                    ax.legend(fontsize=10)
-                    ax.grid(True, alpha=0.3)
-                    ax.spines['top'].set_visible(False)
-                    ax.spines['right'].set_visible(False)
-                    st.pyplot(fig, use_container_width=True)
-                    plt.close()
-                except Exception as e:
-                    st.info("📭 KDE plot unavailable")
-        
-        # Cumulative Distribution
-        with col4:
-            st.markdown("#### 📈 Cumulative Distribution")
-            if not numeric_df.empty and len(numeric_df.columns) > 0:
-                try:
-                    fig, ax = plt.subplots(figsize=(9, 5))
-                    for idx, col in enumerate(numeric_df.columns[:2]):
-                        sorted_data = np.sort(numeric_df[col].dropna())
-                        cumulative = np.arange(1, len(sorted_data) + 1) / len(sorted_data)
-                        safe_col = sanitize_label(col)
-                        color = COLORS['primary'] if idx == 0 else COLORS['secondary']
-                        ax.plot(sorted_data, cumulative, label=safe_col, linewidth=2.5, color=color)
-                    ax.set_xlabel("Values", fontsize=11, fontweight='bold')
-                    ax.set_ylabel("Cumulative Probability", fontsize=11, fontweight='bold')
-                    ax.set_title("Cumulative Distribution Function", fontsize=14, fontweight='bold', pad=20)
-                    ax.legend(fontsize=10)
-                    ax.grid(True, alpha=0.3, linestyle='--')
-                    ax.spines['top'].set_visible(False)
-                    ax.spines['right'].set_visible(False)
-                    st.pyplot(fig, use_container_width=True)
-                    plt.close()
-                except Exception as e:
-                    st.info("📭 CDF plot unavailable")
 
 
 def show_simple_charts(df):
@@ -677,4 +681,3 @@ def show_simple_charts(df):
     
     if not numeric_df.empty:
         st.line_chart(numeric_df.iloc[:, :3])
-

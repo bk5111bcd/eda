@@ -60,7 +60,8 @@ def get_current_user() -> str:
 
 def get_user_info() -> dict:
     """Get current user information"""
-    return st.session_state.get("user_info", {})
+    user_info = st.session_state.get("user_info", {})
+    return user_info if user_info is not None else {}
 
 def init_session():
     """Initialize session state variables"""
