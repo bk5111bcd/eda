@@ -262,14 +262,26 @@ def ask_llm_for_analysis(question, df):
     Falls back to Gemini if OpenAI is unavailable.
     Dataset-agnostic approach - only summaries, no raw data.
     """
+    print(">>> ENTERING LLM ANALYSIS <<<")
+    
     # Try OpenAI first (preferred)
     openai_response = _ask_openai_for_analysis(question, df)
     if openai_response:
+        print("✅ Using OpenAI response")
         return openai_response
     
-    # Fallback to Gemini if OpenAI fails
-    print(">>> FALLING BACK TO GEMINI <<<")
-    return _ask_gemini_for_analysis(question, df)
+    print("⚠️ OpenAI failed or unavailable, trying Gemini...")
+    
+    # Fallback to Gemini if OpenAI is unavailable
+    gemini_response = _ask_gemini_for_analysis(question, df)
+    if gemini_response:
+        print("✅ Using Gemini response")
+        return gemini_response
+    
+    print("❌ Both APIs failed, generating basic response from data...")
+    
+    # Last resort: Generate basic response from data statistics
+    return _generate_basic_response(question, df)
 
 
 def _ask_openai_for_analysis(question, df):
@@ -282,61 +294,61 @@ def _ask_openai_for_analysis(question, df):
         # Get API key from environment
         api_key = os.getenv("OPENAI_API_KEY")
         if not api_key:
-            print("WARNING: OPENAI_API_KEY not set, skipping OpenAI")
+            print("⚠️ OPENAI_API_KEY not found in environment")
             return None
+        
+        print(f"✓ API Key found (length: {len(api_key)})")
         
         client = OpenAI(api_key=api_key)
         
         # Build rich context with statistical analysis
         context = _build_data_context(df)
+        print(f"✓ Data context built ({len(context)} chars)")
         
         # Create a sophisticated prompt for data analysis
-        prompt = f"""You are an expert data scientist and business analyst with deep expertise in statistical analysis, data interpretation, and insight generation.
+        system_prompt = """You are an expert data analyst like ChatGPT. Your responses should be:
+- Clear, concise, and well-structured
+- Specific with numbers and statistics
+- Actionable and insightful
+- Professional yet conversational
+- Use markdown formatting for better readability"""
+        
+        user_prompt = f"""Analyze this dataset and answer the following question:
 
-Your task is to provide insightful, accurate, and actionable analysis based on the dataset provided.
+QUESTION: {question}
 
-KEY REQUIREMENTS:
-- Use ONLY the dataset statistics provided below - never invent or assume data
-- Provide specific numbers and percentages when applicable
-- Identify patterns, trends, and anomalies
-- Offer actionable insights and recommendations
-- Use professional, clear language
-- Structure responses with clear sections (e.g., Summary, Key Findings, Recommendations)
-- Include statistical reasoning where relevant
-
-DATASET OVERVIEW:
+DATASET STATISTICS:
 {context}
 
-USER QUESTION:
-{question}
-
-PROVIDE A COMPREHENSIVE ANALYSIS:
-(Be specific, data-driven, and professional)
-"""
+Please provide a comprehensive, ChatGPT-style response with clear sections and actionable insights."""
+        
+        print("🔄 Calling OpenAI API...")
         
         response = client.chat.completions.create(
             model="gpt-4-turbo",
             messages=[
                 {
                     "role": "system",
-                    "content": "You are an expert data analyst providing insights from datasets. Always be accurate, specific, and professional."
+                    "content": system_prompt
                 },
                 {
                     "role": "user",
-                    "content": prompt
+                    "content": user_prompt
                 }
             ],
             temperature=0.7,
-            max_tokens=1500,
-            top_p=0.9
+            max_tokens=2000,
+            top_p=0.95
         )
         
         result = response.choices[0].message.content.strip()
-        print(f"✅ OpenAI Response Length: {len(result)} characters")
+        print(f"✅ OpenAI Success! Response: {len(result)} chars")
         return result
     
     except Exception as e:
-        print(f"⚠️ OpenAI Error: {str(e)}")
+        print(f"❌ OpenAI Error: {type(e).__name__}: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return None
 
 
@@ -349,34 +361,42 @@ def _ask_gemini_for_analysis(question, df):
         
         api_key = os.getenv("GEMINI_API_KEY")
         if not api_key:
-            print("ERROR: GEMINI_API_KEY not set")
+            print("⚠️ GEMINI_API_KEY not set")
             return None
         
+        print("✓ Configuring Gemini...")
         genai.configure(api_key=api_key)
         model = genai.GenerativeModel("gemini-1.5-flash")
         
         context = _build_data_context(df)
+        print(f"✓ Data context built ({len(context)} chars)")
         
-        prompt = f"""You are a professional data analyst.
-Only use the dataset information below.
-Answer the user's question based ONLY on the provided data.
-Do NOT invent data or statistics.
-Be concise, logical, and accurate.
-Provide structured insights.
+        system_prompt = """You are a ChatGPT-like data analyst. Your responses should be:
+- Clear and well-structured with sections
+- Specific with numbers and statistics from the provided data
+- Insightful and actionable
+- Use markdown formatting
+- Professional yet conversational"""
+        
+        prompt = f"""{system_prompt}
 
-DATASET INFORMATION:
+DATASET STATISTICS:
 {context}
 
-USER QUESTION:
-{question}
+USER QUESTION: {question}
 
-ANSWER:"""
+Please provide a comprehensive analysis similar to how ChatGPT would respond. Use clear sections and specific numbers."""
         
+        print("🔄 Calling Gemini API...")
         response = model.generate_content(prompt)
-        return response.text.strip()
+        result = response.text.strip()
+        print(f"✅ Gemini Success! Response: {len(result)} chars")
+        return result
     
     except Exception as e:
-        print(f"❌ Gemini Error: {str(e)}")
+        print(f"❌ Gemini Error: {type(e).__name__}: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return None
 
 
@@ -435,4 +455,55 @@ def _build_data_context(df):
     context += f"  • Completeness: {((1 - df.isnull().sum().sum() / (len(df) * len(df.columns))) * 100):.1f}%\n"
     
     return context
+
+
+def _generate_basic_response(question, df):
+    """Generate a basic response from data statistics when APIs are unavailable"""
+    print(">>> GENERATING BASIC RESPONSE <<<")
+    
+    try:
+        response = f"""## Analysis of Your Dataset
+
+Based on your question: **{question}**
+
+### 📊 Dataset Overview
+- **Total Rows:** {len(df):,}
+- **Total Columns:** {len(df.columns)}
+- **Data Size:** {df.memory_usage(deep=True).sum() / 1024 / 1024:.2f} MB
+
+### 📈 Numeric Columns Analysis
+"""
+        
+        numeric_cols = df.select_dtypes(include=['number']).columns.tolist()
+        if numeric_cols:
+            response += f"Found {len(numeric_cols)} numeric columns:\n"
+            for col in numeric_cols[:5]:  # Show first 5
+                col_data = df[col].dropna()
+                response += f"\n**{col}:**\n"
+                response += f"- Min: {col_data.min():.2f}\n"
+                response += f"- Max: {col_data.max():.2f}\n"
+                response += f"- Mean: {col_data.mean():.2f}\n"
+                response += f"- Median: {col_data.median():.2f}\n"
+        
+        response += f"\n### 🏷️ Categorical Columns Analysis\n"
+        cat_cols = df.select_dtypes(include=['object']).columns.tolist()
+        if cat_cols:
+            response += f"Found {len(cat_cols)} categorical columns\n"
+            for col in cat_cols[:3]:  # Show first 3
+                unique_count = df[col].nunique()
+                response += f"- **{col}:** {unique_count} unique values\n"
+        
+        response += f"\n### ⚠️ Data Quality\n"
+        missing_pct = (df.isnull().sum().sum() / (len(df) * len(df.columns)) * 100)
+        response += f"- Missing data: {missing_pct:.1f}%\n"
+        response += f"- Data completeness: {100 - missing_pct:.1f}%\n"
+        
+        response += "\n*Note: This is a basic analysis. For more detailed insights, please ensure your API keys are properly configured.*"
+        
+        return response
+    
+    except Exception as e:
+        print(f"Error generating basic response: {e}")
+        return f"⚠️ Unable to generate analysis. Error: {str(e)}\n\nPlease check your API configuration or try a different question."
+
 
