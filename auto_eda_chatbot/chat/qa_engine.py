@@ -61,7 +61,7 @@ def classify_question(question, df):
 def retrieve_from_dataset(df, question):
     """
     Dataset-agnostic retrieval function.
-    Works with any DataFrame structure.
+    Returns data if found, None if analysis-type question (route to LLM)
     """
     # Safety check: ensure question is a string
     if isinstance(question, pd.DataFrame):
@@ -72,19 +72,25 @@ def retrieve_from_dataset(df, question):
     # Normalize question (strip and lowercase)
     q = question.lower().strip()
 
-    # Words that mean "analysis"
+    # ANALYSIS KEYWORDS - These MUST go to LLM, NOT pandas
     analysis_keywords = [
         "pattern", "patterns", "trend", "trends",
-        "analyze", "analysis", "summary",
-        "why", "insight", "describe", "compare"
+        "analyze", "analysis", "summary", "summarize",
+        "why", "why ", "insight", "insights", "describe", "compare", "comparison",
+        "key statistics", "overview", "overview",
+        "correlat", "relationship", "relationships",
+        "anomal", "outlier", "outliers",
+        "quality", "what are the",
     ]
 
-    # If analysis intent → DO NOTHING
-    if any(word in q for word in analysis_keywords):
-        return None   # ← THIS LINE FIXES YOUR BOT
+    # If question contains analysis keywords → route to LLM
+    for keyword in analysis_keywords:
+        if keyword in q:
+            print(f"[RETRIEVE] Analysis keyword found: '{keyword}' → routing to LLM")
+            return None  # This triggers LLM routing
 
     # Handle "list" queries
-    if "list" in q or "show" in q and "all" in q:
+    if "list" in q or ("show" in q and "all" in q):
         for col in df.columns:
             col_lower = col.lower()
             if col_lower in q:
@@ -96,34 +102,25 @@ def retrieve_from_dataset(df, question):
 
     # SCOPE BINDING: Extract person name FIRST to determine aggregation scope
     extracted_entity = extract_name(question, df)
-    print(f"DEBUG NAME: {extracted_entity}")
+    print(f"[RETRIEVE] DEBUG NAME: {extracted_entity}")
     
     if extracted_entity:
         # Person found - bind statistics to this person's data, NOT global data
-        # "average salary of arun" → arun's average (or single value if only one row)
-        # NOT global average
-        
         numeric_cols = df.select_dtypes(include=['number']).columns.tolist()
         
         # Check if asking for statistics on this person
         if "average" in q or "mean" in q:
             for col in numeric_cols:
                 col_lower = col.lower()
-                # Use word boundary matching to avoid false positives (e.g., "age" in "arun")
-                # Check if column name is a whole word in the question
                 if " " + col_lower + " " in " " + q + " ":
-                    # Get values for THIS PERSON only
                     person_data = df[df['name'].str.lower() == extracted_entity.lower()][col]
                     if len(person_data) > 1:
-                        # Multiple records - compute average
                         avg_val = person_data.mean()
                         return f"✓ {extracted_entity}'s average {col}: {avg_val:.2f}"
                     elif len(person_data) == 1:
-                        # Only one record - average is not applicable
                         value = person_data.iloc[0]
-                        return f"✓ {extracted_entity} has only one record: {col} = {value} (average not applicable for single record)"
+                        return f"✓ {extracted_entity} has only one record: {col} = {value}"
                     else:
-                        # No records found
                         return f"❌ No records found for {extracted_entity}"
         
         if "max" in q or "maximum" in q or "highest" in q:
@@ -142,24 +139,21 @@ def retrieve_from_dataset(df, question):
                     if len(person_data) > 0:
                         return f"✓ {extracted_entity}'s min {col}: {person_data.min()}"
         
-        # If no statistics keyword, just return the person's column value
-        for id_col in df.columns:
-            if id_col in ['name', 'id', 'employee', 'person', 'user']:
-                for col in df.columns:
-                    if col != id_col:
-                        col_lower = col.lower()
-                        q_words = q.split()
-                        if col_lower in q_words or col_lower in q.replace("'s", "").replace("of", "").replace("what", "").replace("is", "").replace("the", "").replace("a", ""):
-                            mask = df[id_col].str.lower() == extracted_entity.lower()
-                            if mask.any():
-                                result_value = df.loc[mask, col].values[0]
-                                return f"✓ {extracted_entity}'s {col}: {result_value}"
+        # If no statistics keyword, try to find specific column
+        for col in df.columns:
+            if col != 'name':
+                col_lower = col.lower()
+                q_words = q.split()
+                if col_lower in q_words or col_lower in q:
+                    mask = df['name'].str.lower() == extracted_entity.lower()
+                    if mask.any():
+                        result_value = df.loc[mask, col].values[0]
+                        return f"✓ {extracted_entity}'s {col}: {result_value}"
         
-        # If we have a person but no specific column match, return error
-        return f"❌ {extracted_entity} found but cannot determine what you're asking for"
+        # Person found but can't determine what to extract → let LLM handle it
+        return None
 
     # NO person name found - compute statistics on ENTIRE dataset (global scope)
-    # "what is the average salary" → global average
     numeric_cols = df.select_dtypes(include=['number']).columns.tolist()
     
     if "average" in q or "mean" in q:
@@ -192,16 +186,9 @@ def retrieve_from_dataset(df, question):
             if col_lower in q:
                 return f"✓ Count of {col}: {df[col].nunique()} unique values"
 
-
-
-
-    # Last resort: check if someone is asking for a person but extract_name failed
-    for id_col in df.columns:
-        if id_col in ['name', 'id', 'employee', 'person', 'user']:
-            available_names = df[id_col].unique().tolist()
-            return f"❌ Person not found. Available: {', '.join(available_names)}"
-
-    return "❌ Cannot parse question"
+    # Default: route unmatched questions to LLM for analysis
+    print("[RETRIEVE] No specific pattern matched → routing to LLM")
+    return None
 
 
 def extract_name(question: str, df: pd.DataFrame) -> Optional[str]:
