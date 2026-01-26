@@ -72,13 +72,33 @@ def retrieve_from_dataset(df, question):
     # Normalize question (strip and lowercase)
     q = question.lower().strip()
     
-    # CHECK FOR PERSON COMPARISON FIRST (HIGHEST PRIORITY)
+    # CHECK FOR MULTIPLE PEOPLE QUERY FIRST (HIGHEST PRIORITY)
+    if " and " in q:
+        names = extract_multiple_names(question, df)
+        if len(names) >= 2:
+            print(f"[RETRIEVE] Multiple people detected: {names}")
+            # Find which column they're asking about
+            numeric_cols = df.select_dtypes(include=['number']).columns.tolist()
+            for col in numeric_cols:
+                col_lower = col.lower()
+                if col_lower in q:
+                    result = retrieve_multiple_people_data(df, question, col)
+                    if result:
+                        return result
+            
+            # Also check categorical columns
+            for col in df.columns:
+                col_lower = col.lower()
+                if col_lower in q and col != 'name':
+                    result = retrieve_multiple_people_data(df, question, col)
+                    if result:
+                        return result
+    
+    # CHECK FOR PERSON COMPARISON (SECOND PRIORITY)
     comparison = detect_person_comparison(question, df)
     if comparison:
         person1, person2 = comparison
         print(f"[RETRIEVE] Person comparison detected: {person1} vs {person2}")
-        # Return None to trigger visualization in app.py
-        # We'll handle this specially in app.py
         return f"__COMPARISON__{person1}__AND__{person2}__"
 
     # ANALYSIS KEYWORDS - These MUST go to LLM, NOT pandas
@@ -197,6 +217,50 @@ def retrieve_from_dataset(df, question):
 
     # Default: route unmatched questions to LLM for analysis
     print("[RETRIEVE] No specific pattern matched → routing to LLM")
+    return None
+
+
+def extract_multiple_names(question: str, df: pd.DataFrame) -> list:
+    """
+    Extract multiple names from a question joined by 'and'
+    Returns list of names found
+    """
+    if 'name' not in df.columns:
+        return []
+    
+    q = question.lower()
+    all_names = [name.lower() for name in df['name'].unique()]
+    found_names = []
+    
+    for name in all_names:
+        if name in q:
+            found_names.append(name)
+    
+    return found_names
+
+
+def retrieve_multiple_people_data(df, question: str, column: str) -> Optional[str]:
+    """
+    Retrieve data for multiple people at once
+    Example: "What is the age of ravi kumar and anjali"
+    """
+    names = extract_multiple_names(question, df)
+    
+    if len(names) < 2:
+        return None
+    
+    col_lower = column.lower()
+    results = []
+    
+    for name in names:
+        person_data = df[df['name'].str.lower() == name.lower()]
+        if len(person_data) > 0:
+            value = person_data[column].values[0]
+            results.append(f"{name.title()}: {value}")
+    
+    if results:
+        return f"✓ {column.title()}:\n  " + "\n  ".join(results)
+    
     return None
 
 
