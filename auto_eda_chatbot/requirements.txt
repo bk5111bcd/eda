@@ -6,3 +6,5 @@ seaborn
 scikit-learn
 google-generativeai
 wordcloud
+plotly
+scipy
