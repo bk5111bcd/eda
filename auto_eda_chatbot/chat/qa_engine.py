@@ -71,6 +71,15 @@ def retrieve_from_dataset(df, question):
     
     # Normalize question (strip and lowercase)
     q = question.lower().strip()
+    
+    # CHECK FOR PERSON COMPARISON FIRST (HIGHEST PRIORITY)
+    comparison = detect_person_comparison(question, df)
+    if comparison:
+        person1, person2 = comparison
+        print(f"[RETRIEVE] Person comparison detected: {person1} vs {person2}")
+        # Return None to trigger visualization in app.py
+        # We'll handle this specially in app.py
+        return f"__COMPARISON__{person1}__AND__{person2}__"
 
     # ANALYSIS KEYWORDS - These MUST go to LLM, NOT pandas
     analysis_keywords = [
