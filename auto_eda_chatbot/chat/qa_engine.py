@@ -236,6 +236,116 @@ def parse_visualization_request(question: str, df: pd.DataFrame) -> Optional[tup
     return None
 
 
+def detect_person_comparison(question: str, df: pd.DataFrame) -> Optional[tuple]:
+    """
+    Detect if user is asking for comparison between two people.
+    Returns: (person1, person2) or None
+    
+    Examples:
+    - "Compare ravi kumar and anjali sharma"
+    - "Show difference between ravi and pooja"
+    - "ravi vs anjali"
+    """
+    q = question.lower()
+    
+    # Comparison keywords
+    comparison_keywords = ['compare', 'vs', 'versus', 'difference', 'between', 'vs.', 'v/s']
+    
+    # Check if question contains comparison intent
+    has_comparison = any(kw in q for kw in comparison_keywords)
+    if not has_comparison:
+        return None
+    
+    # Get all available person names from dataset
+    if 'name' not in df.columns:
+        return None
+    
+    all_names = [name.lower() for name in df['name'].unique()]
+    
+    # Find which two names are mentioned in the question
+    found_names = []
+    for name in all_names:
+        if name in q:
+            found_names.append(name)
+    
+    # Return if exactly 2 people found
+    if len(found_names) == 2:
+        return (found_names[0], found_names[1])
+    
+    return None
+
+
+def create_person_comparison_chart(df, person1: str, person2: str):
+    """
+    Create a comparison visualization for two people.
+    Returns: (fig, data_dict) for both chart and detailed data
+    """
+    try:
+        import matplotlib.pyplot as plt
+        import numpy as np
+        
+        # Filter data for both people
+        p1_data = df[df['name'].str.lower() == person1.lower()]
+        p2_data = df[df['name'].str.lower() == person2.lower()]
+        
+        if len(p1_data) == 0 or len(p2_data) == 0:
+            return None, None
+        
+        # Get numeric columns for comparison
+        numeric_cols = df.select_dtypes(include=['number']).columns.tolist()
+        
+        if not numeric_cols:
+            return None, None
+        
+        # Prepare data for visualization
+        fig, axes = plt.subplots(1, len(numeric_cols), figsize=(15, 5))
+        if len(numeric_cols) == 1:
+            axes = [axes]
+        
+        comparison_data = {}
+        
+        # Create individual charts for each numeric column
+        for idx, col in enumerate(numeric_cols):
+            p1_val = p1_data[col].values[0]
+            p2_val = p2_data[col].values[0]
+            
+            comparison_data[col] = {
+                person1: float(p1_val),
+                person2: float(p2_val)
+            }
+            
+            # Create bar chart
+            names = [person1.title(), person2.title()]
+            values = [p1_val, p2_val]
+            colors = ['#667eea', '#764ba2']
+            
+            axes[idx].bar(names, values, color=colors, alpha=0.8, edgecolor='white', linewidth=2)
+            axes[idx].set_title(f'{col.title()} Comparison', fontsize=12, fontweight='bold')
+            axes[idx].set_ylabel(col.title(), fontsize=10)
+            
+            # Add value labels on bars
+            for i, v in enumerate(values):
+                axes[idx].text(i, v, f'{v:.0f}', ha='center', va='bottom', fontweight='bold')
+            
+            # Styling
+            axes[idx].set_facecolor('#1a1f3a')
+            axes[idx].grid(axis='y', alpha=0.3, linestyle='--')
+            for spine in axes[idx].spines.values():
+                spine.set_color('#00d9ff')
+                spine.set_linewidth(1.5)
+        
+        fig.patch.set_facecolor('#0a0e27')
+        fig.suptitle(f'Comparison: {person1.title()} vs {person2.title()}', 
+                    fontsize=14, fontweight='bold', color='white', y=1.02)
+        plt.tight_layout()
+        
+        return fig, comparison_data
+    
+    except Exception as e:
+        print(f"Error creating comparison chart: {e}")
+        return None, None
+
+
 def answer_question(df, question):
     """Router: Pandas first, LLM second. NO LOGIC, NO CONDITIONS."""
     # Debug output
