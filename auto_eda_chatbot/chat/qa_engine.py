@@ -270,43 +270,105 @@ def answer_question(df, question):
 
 
 def ask_llm_for_analysis(question, df):
-    """Call Gemini API for analysis - only summaries, no raw data. Dataset-agnostic."""
-    print(">>> ROUTED TO GEMINI <<<")  # DEBUG LINE - MANDATORY
+    """
+    Call OpenAI GPT-4 for advanced analysis - provides deep insights with statistical rigor.
+    Falls back to Gemini if OpenAI is unavailable.
+    Dataset-agnostic approach - only summaries, no raw data.
+    """
+    # Try OpenAI first (preferred)
+    openai_response = _ask_openai_for_analysis(question, df)
+    if openai_response:
+        return openai_response
+    
+    # Fallback to Gemini if OpenAI fails
+    print(">>> FALLING BACK TO GEMINI <<<")
+    return _ask_gemini_for_analysis(question, df)
+
+
+def _ask_openai_for_analysis(question, df):
+    """Call OpenAI GPT-4 API for advanced analysis"""
+    print(">>> ROUTED TO OPENAI GPT-4 <<<")
+    
+    try:
+        from openai import OpenAI
+        
+        # Get API key from environment
+        api_key = os.getenv("OPENAI_API_KEY")
+        if not api_key:
+            print("WARNING: OPENAI_API_KEY not set, skipping OpenAI")
+            return None
+        
+        client = OpenAI(api_key=api_key)
+        
+        # Build rich context with statistical analysis
+        context = _build_data_context(df)
+        
+        # Create a sophisticated prompt for data analysis
+        prompt = f"""You are an expert data scientist and business analyst with deep expertise in statistical analysis, data interpretation, and insight generation.
+
+Your task is to provide insightful, accurate, and actionable analysis based on the dataset provided.
+
+KEY REQUIREMENTS:
+- Use ONLY the dataset statistics provided below - never invent or assume data
+- Provide specific numbers and percentages when applicable
+- Identify patterns, trends, and anomalies
+- Offer actionable insights and recommendations
+- Use professional, clear language
+- Structure responses with clear sections (e.g., Summary, Key Findings, Recommendations)
+- Include statistical reasoning where relevant
+
+DATASET OVERVIEW:
+{context}
+
+USER QUESTION:
+{question}
+
+PROVIDE A COMPREHENSIVE ANALYSIS:
+(Be specific, data-driven, and professional)
+"""
+        
+        response = client.chat.completions.create(
+            model="gpt-4-turbo",
+            messages=[
+                {
+                    "role": "system",
+                    "content": "You are an expert data analyst providing insights from datasets. Always be accurate, specific, and professional."
+                },
+                {
+                    "role": "user",
+                    "content": prompt
+                }
+            ],
+            temperature=0.7,
+            max_tokens=1500,
+            top_p=0.9
+        )
+        
+        result = response.choices[0].message.content.strip()
+        print(f"✅ OpenAI Response Length: {len(result)} characters")
+        return result
+    
+    except Exception as e:
+        print(f"⚠️ OpenAI Error: {str(e)}")
+        return None
+
+
+def _ask_gemini_for_analysis(question, df):
+    """Call Google Gemini API for analysis - fallback option"""
+    print(">>> ROUTED TO GEMINI (FALLBACK) <<<")
     
     try:
         import google.generativeai as genai
         
-        # Configure Gemini with API key from environment
         api_key = os.getenv("GEMINI_API_KEY")
         if not api_key:
-            print("ERROR: GEMINI_API_KEY environment variable not set")
+            print("ERROR: GEMINI_API_KEY not set")
             return None
         
         genai.configure(api_key=api_key)
         model = genai.GenerativeModel("gemini-1.5-flash")
         
-        # Build dataset-agnostic context with only summaries
-        context = f"Dataset: {len(df)} rows, {len(df.columns)} columns\n\n"
-        
-        # Numeric summaries
-        numeric_cols = df.select_dtypes(include=['number']).columns.tolist()
-        if numeric_cols:
-            context += "NUMERIC COLUMNS SUMMARY:\n"
-            for col in numeric_cols:
-                context += f"  {col}: min={df[col].min():.2f}, max={df[col].max():.2f}, mean={df[col].mean():.2f}\n"
-            context += "\n"
-        
-        # Categorical summaries
-        categorical_cols = df.select_dtypes(include=['object']).columns.tolist()
-        if categorical_cols:
-            context += "CATEGORICAL COLUMNS SUMMARY:\n"
-            for col in categorical_cols:
-                context += f"  {col}: {df[col].nunique()} unique values\n"
-            context += "\n"
-        
-        # Full statistical summary
-        context += "DETAILED STATISTICS:\n"
-        context += df.describe(include='all').to_string()
+        context = _build_data_context(df)
         
         prompt = f"""You are a professional data analyst.
 Only use the dataset information below.
@@ -327,6 +389,63 @@ ANSWER:"""
         return response.text.strip()
     
     except Exception as e:
-        print(f"Gemini Error: {str(e)}")
+        print(f"❌ Gemini Error: {str(e)}")
         return None
+
+
+def _build_data_context(df):
+    """Build comprehensive statistical context from the dataset"""
+    context = f"📊 Dataset Overview: {len(df):,} rows, {len(df.columns)} columns\n\n"
+    
+    # Numeric column analysis
+    numeric_cols = df.select_dtypes(include=['number']).columns.tolist()
+    if numeric_cols:
+        context += "📈 NUMERIC COLUMNS (Statistical Summary):\n"
+        for col in numeric_cols:
+            try:
+                col_data = df[col].dropna()
+                if len(col_data) > 0:
+                    context += f"  • {col.upper()}:\n"
+                    context += f"      - Count: {len(col_data):,} values\n"
+                    context += f"      - Min: {col_data.min():.2f}\n"
+                    context += f"      - Q1 (25%): {col_data.quantile(0.25):.2f}\n"
+                    context += f"      - Median: {col_data.median():.2f}\n"
+                    context += f"      - Q3 (75%): {col_data.quantile(0.75):.2f}\n"
+                    context += f"      - Max: {col_data.max():.2f}\n"
+                    context += f"      - Mean: {col_data.mean():.2f}\n"
+                    context += f"      - Std Dev: {col_data.std():.2f}\n"
+            except:
+                pass
+        context += "\n"
+    
+    # Categorical column analysis
+    categorical_cols = df.select_dtypes(include=['object']).columns.tolist()
+    if categorical_cols:
+        context += "🏷️ CATEGORICAL COLUMNS:\n"
+        for col in categorical_cols:
+            unique_count = df[col].nunique()
+            context += f"  • {col.upper()}: {unique_count} unique values\n"
+            # Show top 5 categories
+            top_values = df[col].value_counts().head(5)
+            for idx, (val, count) in enumerate(top_values.items(), 1):
+                pct = (count / len(df)) * 100
+                context += f"      {idx}. {val}: {count} ({pct:.1f}%)\n"
+        context += "\n"
+    
+    # Missing data summary
+    missing = df.isnull().sum()
+    if missing.sum() > 0:
+        context += "⚠️ MISSING DATA:\n"
+        for col in missing[missing > 0].index:
+            pct = (missing[col] / len(df)) * 100
+            context += f"  • {col}: {missing[col]} missing ({pct:.1f}%)\n"
+        context += "\n"
+    
+    # Data quality metrics
+    context += "✅ DATA QUALITY:\n"
+    context += f"  • Total cells: {len(df) * len(df.columns):,}\n"
+    context += f"  • Complete cells: {(len(df) * len(df.columns)) - df.isnull().sum().sum():,}\n"
+    context += f"  • Completeness: {((1 - df.isnull().sum().sum() / (len(df) * len(df.columns))) * 100):.1f}%\n"
+    
+    return context
 

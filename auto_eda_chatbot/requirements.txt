@@ -8,3 +8,5 @@ google-generativeai
 wordcloud
 plotly
 scipy
+openai
+python-dotenv
