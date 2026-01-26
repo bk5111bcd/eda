@@ -299,7 +299,13 @@ def _ask_openai_for_analysis(question, df):
         
         print(f"✓ API Key found (length: {len(api_key)})")
         
-        client = OpenAI(api_key=api_key)
+        # Initialize client with proper error handling
+        try:
+            client = OpenAI(api_key=api_key)
+            print("✓ OpenAI client initialized")
+        except Exception as e:
+            print(f"❌ Failed to initialize OpenAI client: {e}")
+            return None
         
         # Build rich context with statistical analysis
         context = _build_data_context(df)
@@ -338,7 +344,8 @@ Please provide a comprehensive, ChatGPT-style response with clear sections and a
             ],
             temperature=0.7,
             max_tokens=2000,
-            top_p=0.95
+            top_p=0.95,
+            timeout=30.0
         )
         
         result = response.choices[0].message.content.strip()
@@ -347,8 +354,6 @@ Please provide a comprehensive, ChatGPT-style response with clear sections and a
     
     except Exception as e:
         print(f"❌ OpenAI Error: {type(e).__name__}: {str(e)}")
-        import traceback
-        traceback.print_exc()
         return None
 
 
@@ -357,14 +362,14 @@ def _ask_gemini_for_analysis(question, df):
     print(">>> ROUTED TO GEMINI (FALLBACK) <<<")
     
     try:
-        import google.generativeai as genai
-        
         api_key = os.getenv("GEMINI_API_KEY")
         if not api_key:
-            print("⚠️ GEMINI_API_KEY not set")
+            print("⚠️ GEMINI_API_KEY not set - skipping Gemini fallback")
             return None
         
         print("✓ Configuring Gemini...")
+        import google.generativeai as genai
+        
         genai.configure(api_key=api_key)
         model = genai.GenerativeModel("gemini-1.5-flash")
         
@@ -395,8 +400,6 @@ Please provide a comprehensive analysis similar to how ChatGPT would respond. Us
     
     except Exception as e:
         print(f"❌ Gemini Error: {type(e).__name__}: {str(e)}")
-        import traceback
-        traceback.print_exc()
         return None
 
 
