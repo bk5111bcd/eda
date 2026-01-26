@@ -232,11 +232,28 @@ def extract_multiple_names(question: str, df: pd.DataFrame) -> list:
     all_names = [name.lower() for name in df['name'].unique()]
     found_names = []
     
+    # Try exact matches first
     for name in all_names:
         if name in q:
             found_names.append(name)
     
-    return found_names
+    # If not enough matches, try partial matching (first name only)
+    if len(found_names) < 2:
+        found_names = []
+        for name in all_names:
+            first_name = name.split()[0] if ' ' in name else name
+            if first_name in q:
+                found_names.append(name)
+    
+    # Remove duplicates while preserving order
+    seen = set()
+    unique_names = []
+    for name in found_names:
+        if name not in seen:
+            seen.add(name)
+            unique_names.append(name)
+    
+    return unique_names
 
 
 def retrieve_multiple_people_data(df, question: str, column: str) -> Optional[str]:
