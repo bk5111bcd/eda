@@ -29,19 +29,19 @@ def show_chart(fig, width=5, height=3):
         >>> show_chart(fig)  # Perfect size, no stretching
     """
     fig.set_size_inches(width, height)
-    st.pyplot(fig, use_container_width=False)
+    st.pyplot(fig, width="content")
     plt.close(fig)
 
 
 def show_chart_wide(fig, width=6.5, height=5):
     """Display wider heatmap/correlation charts (6.5 x 5 inches)"""
     fig.set_size_inches(width, height)
-    st.pyplot(fig, use_container_width=False)
+    st.pyplot(fig, width="content")
     plt.close(fig)
 
 
 def show_chart_square(fig, size=5):
     """Display square charts like radar/polar plots (5 x 5 inches)"""
     fig.set_size_inches(size, size)
-    st.pyplot(fig, use_container_width=False)
+    st.pyplot(fig, width="content")
     plt.close(fig)

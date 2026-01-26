@@ -341,7 +341,7 @@ def show_charts(df):
                     if not numeric_df.empty:
                         st.markdown("#### 🔢 Numeric Columns")
                         numeric_stats = numeric_df.describe().round(3)
-                        st.dataframe(numeric_stats, use_container_width=True, height=300)
+                        st.dataframe(numeric_stats, width="stretch", height=300)
                 
                 with col2:
                     if not categorical_df.empty:
@@ -611,7 +611,7 @@ def show_charts(df):
                         show_chart(fig)
                         plt.close()
                         
-                        st.dataframe(missing_df, use_container_width=True)
+                        st.dataframe(missing_df, width="stretch")
                     else:
                         st.success("✅ No missing values found!")
                 else:
@@ -627,7 +627,7 @@ def show_charts(df):
                     'Non-Null Count': df.count().values,
                     'Null Count': df.isnull().sum().values
                 })
-                st.dataframe(dtype_summary, use_container_width=True)
+                st.dataframe(dtype_summary, width="stretch")
                 
                 st.divider()
                 
@@ -661,7 +661,7 @@ def show_charts(df):
                         })
                     
                     outlier_df = pd.DataFrame(outlier_info)
-                    st.dataframe(outlier_df, use_container_width=True)
+                    st.dataframe(outlier_df, width="stretch")
                 else:
                     st.info("📭 No numeric columns for outlier detection")
                     

@@ -3,6 +3,8 @@ Enhanced Auto EDA Chatbot with Authentication & PDF Export
 Complete redesign with professional UI/UX
 """
 
+from dotenv import load_dotenv
+load_dotenv()
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -560,36 +562,7 @@ st.markdown("""
 
 init_session()
 
-# ═════════════════════════════════════════════════════════════════════════════
-# GEMINI API SETUP
-# ═════════════════════════════════════════════════════════════════════════════
-# Check if API key is provided in sidebar
-if "gemini_api_key" not in st.session_state:
-    st.session_state.gemini_api_key = os.getenv("GEMINI_API_KEY", "")
-
-# Add API key input in sidebar
-with st.sidebar:
-    st.markdown("### 🔑 Gemini API Configuration")
-    api_key_input = st.text_input(
-        "Enter your Gemini API Key",
-        value=st.session_state.gemini_api_key,
-        type="password",
-        help="Get your key from https://ai.google.dev"
-    )
-    
-    if api_key_input:
-        st.session_state.gemini_api_key = api_key_input
-        os.environ["GEMINI_API_KEY"] = api_key_input
-        st.success("✅ Gemini API Key configured!")
-    elif os.getenv("GEMINI_API_KEY"):
-        os.environ["GEMINI_API_KEY"] = os.getenv("GEMINI_API_KEY")
-        st.info("ℹ️ Using GEMINI_API_KEY from environment")
-    else:
-        st.warning("⚠️ Gemini API Key not set. Analysis features will be limited.")
-
-if not is_authenticated():
-    show_login_page()
-    st.stop()
+# ════════════════════════════════════════════════════════════════════
 
 # ═════════════════════════════════════════════════════════════════════════════
 # AUTHENTICATED USER INTERFACE
@@ -773,7 +746,7 @@ if df is not None:
         with col1:
             st.markdown("#### 📋 Raw Data Preview")
             n_rows = st.slider("Rows to display", 5, 100, 10)
-            st.dataframe(df.head(n_rows), use_container_width=True, height=400)
+            st.dataframe(df.head(n_rows), width="stretch", height=400)
         
         with col2:
             st.markdown("#### 📈 Data Summary")
@@ -882,7 +855,7 @@ if df is not None:
             col1, col2 = st.columns([1, 3])
             
             with col1:
-                if st.button("📥 Generate PDF", use_container_width=True):
+                if st.button("📥 Generate PDF", width="stretch"):
                     with st.spinner("🔄 Generating PDF report..."):
                         try:
                             # Generate PDF

@@ -6,7 +6,12 @@ Handles user login and session management
 import streamlit as st
 import json
 import hashlib
+import os
 from datetime import datetime, timedelta
+from dotenv import load_dotenv
+
+# Load .env if present so credentials can be provided via environment
+load_dotenv()
 
 # Default credentials (in production, use a proper database)
 DEFAULT_USERS = {
@@ -21,6 +26,37 @@ DEFAULT_USERS = {
         "name": "Demo User"
     }
 }
+
+# Allow overriding or providing users via environment variables for easy setup:
+# - If `AUTH_USERS_JSON` is set, it should be a JSON string mapping usernames to
+#   dicts with keys: password (plain text or sha256 hex), email, name.
+# - Or set `ADMIN_USER` and `ADMIN_PASS` to define a single admin account.
+env_users = os.getenv("AUTH_USERS_JSON")
+if env_users:
+    try:
+        parsed = json.loads(env_users)
+        for u, info in parsed.items():
+            pwd = info.get("password", "")
+            # if password appears to be raw (not 64 hex chars), hash it
+            if len(pwd) != 64 or not all(c in '0123456789abcdef' for c in pwd.lower()):
+                pwd = hashlib.sha256(pwd.encode()).hexdigest()
+            DEFAULT_USERS[u] = {
+                "password": pwd,
+                "email": info.get("email", f"{u}@example.com"),
+                "name": info.get("name", u)
+            }
+    except Exception:
+        # ignore invalid env JSON and keep defaults
+        pass
+
+admin_user = os.getenv("ADMIN_USER")
+admin_pass = os.getenv("ADMIN_PASS")
+if admin_user and admin_pass:
+    DEFAULT_USERS[admin_user] = {
+        "password": hashlib.sha256(admin_pass.encode()).hexdigest(),
+        "email": os.getenv("ADMIN_EMAIL", f"{admin_user}@example.com"),
+        "name": os.getenv("ADMIN_NAME", admin_user)
+    }
 
 def hash_password(password: str) -> str:
     """Hash a password using SHA-256"""
@@ -92,7 +128,7 @@ def show_login_page():
         col_login, col_register = st.columns(2)
         
         with col_login:
-            if st.button("🔓 Login", use_container_width=True):
+            if st.button("🔓 Login", width="stretch"):
                 if not username or not password:
                     st.error("❌ Please enter both username and password")
                 elif login_user(username, password):
@@ -102,7 +138,7 @@ def show_login_page():
                     st.error("❌ Invalid credentials")
         
         with col_register:
-            if st.button("📝 Demo Credentials", use_container_width=True):
+            if st.button("📝 Demo Credentials", width="stretch"):
                 st.info("""
                 **Demo Accounts:**
                 - Username: `admin` | Password: `admin123`
@@ -127,6 +163,6 @@ def show_logout_button():
         
         st.divider()
         
-        if st.button("🚪 Logout", use_container_width=True):
+        if st.button("🚪 Logout", width="stretch"):
             logout_user()
             st.rerun()

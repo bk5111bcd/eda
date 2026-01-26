@@ -171,7 +171,7 @@ def show_complete_dashboard(df):
         ax.spines['top'].set_visible(False)
         ax.spines['right'].set_visible(False)
         ax.grid(True, alpha=0.3, axis='y')
-        st.pyplot(fig, use_container_width=True)
+        st.pyplot(fig, width="stretch")
         plt.close()
     
     with col2:
@@ -185,7 +185,7 @@ def show_complete_dashboard(df):
                 f"{100-duplicate_pct:.1f}%"
             ]
         })
-        st.dataframe(quality_metrics, use_container_width=True, hide_index=True)
+        st.dataframe(quality_metrics, width="stretch", hide_index=True)
     
     st.divider()
     
@@ -199,7 +199,7 @@ def show_complete_dashboard(df):
         
         with col1:
             st.markdown("##### 📈 Statistical Summary")
-            st.dataframe(numeric_stats.style.format('{:.2f}'), use_container_width=True, height=300)
+            st.dataframe(numeric_stats.style.format('{:.2f}'), width="stretch", height=300)
         
         with col2:
             st.markdown("##### 📉 Distribution Overview")
@@ -221,7 +221,7 @@ def show_complete_dashboard(df):
                         axes[idx].grid(True, alpha=0.3, axis='y')
                 
                 plt.tight_layout()
-                st.pyplot(fig, use_container_width=True)
+                st.pyplot(fig, width="stretch")
                 plt.close()
             except Exception as e:
                 st.warning("Could not render distribution charts")
@@ -241,7 +241,7 @@ def show_complete_dashboard(df):
             })
         
         cat_df = pd.DataFrame(cat_info)
-        st.dataframe(cat_df, use_container_width=True, hide_index=True)
+        st.dataframe(cat_df, width="stretch", hide_index=True)
         
         st.markdown("##### 📊 Top Category Values")
         col1, col2 = st.columns(2)
@@ -263,7 +263,7 @@ def show_complete_dashboard(df):
                     ax.spines['top'].set_visible(False)
                     ax.spines['right'].set_visible(False)
                     ax.grid(True, alpha=0.3, axis='x')
-                    st.pyplot(fig, use_container_width=True)
+                    st.pyplot(fig, width="stretch")
                     plt.close()
                 except Exception as e:
                     st.warning(f"Could not render chart for {col}")
@@ -279,7 +279,7 @@ def show_complete_dashboard(df):
                     ax.set_title(f'Top Categories - {safe_col}', fontweight='bold')
                     ax.spines['top'].set_visible(False)
                     ax.spines['right'].set_visible(False)
-                    st.pyplot(fig, use_container_width=True)
+                    st.pyplot(fig, width="stretch")
                     plt.close()
                 except:
                     st.write("Chart unavailable")
@@ -297,7 +297,7 @@ def show_complete_dashboard(df):
                        square=True, linewidths=1, cbar_kws={"shrink": 0.8},
                        ax=ax, vmin=-1, vmax=1)
             ax.set_title('Correlation Matrix', fontsize=12, fontweight='bold', pad=20)
-            st.pyplot(fig, use_container_width=True)
+            st.pyplot(fig, width="stretch")
             plt.close()
         except Exception as e:
             st.warning(f"Could not generate correlation matrix: {str(e)}")
@@ -309,14 +309,14 @@ def show_complete_dashboard(df):
     tab1, tab2, tab3, tab4 = st.tabs(["First Rows", "Last Rows", "Random Sample", "Full Info"])
     
     with tab1:
-        st.dataframe(df.head(10), use_container_width=True, height=400)
+        st.dataframe(df.head(10), width="stretch", height=400)
     
     with tab2:
-        st.dataframe(df.tail(10), use_container_width=True, height=400)
+        st.dataframe(df.tail(10), width="stretch", height=400)
     
     with tab3:
         sample_size = min(10, len(df))
-        st.dataframe(df.sample(n=sample_size), use_container_width=True, height=400)
+        st.dataframe(df.sample(n=sample_size), width="stretch", height=400)
     
     with tab4:
         col1, col2 = st.columns(2)
@@ -347,7 +347,7 @@ def show_complete_dashboard(df):
         'Unique': [df[col].nunique() for col in df.columns]
     })
     
-    st.dataframe(col_details, use_container_width=True, height=400)
+    st.dataframe(col_details, width="stretch", height=400)
     
     st.divider()
     

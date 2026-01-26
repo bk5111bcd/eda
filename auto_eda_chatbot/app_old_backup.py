@@ -76,7 +76,7 @@ if df is not None:
     # Show raw data
     if show_raw_data:
         with st.expander("📋 View Raw Data", expanded=False):
-            st.dataframe(df, use_container_width=True)
+            st.dataframe(df, width="stretch")
     
     # Auto EDA
     if auto_eda:
