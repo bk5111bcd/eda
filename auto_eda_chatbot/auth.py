@@ -111,44 +111,359 @@ def init_session():
         st.session_state.login_time = None
 
 def show_login_page():
-    """Display login page"""
+    """Display creative login page with video background"""
     init_session()
     
-    # Center the login form
-    col1, col2, col3 = st.columns([1, 2, 1])
+    # Creative login page with modern design and video background
+    st.markdown("""
+    <style>
+        /* Hide default streamlit elements */
+        [data-testid="stAppViewContainer"] {
+            background: linear-gradient(135deg, #0a0e27 0%, #111829 50%, #0d1426 100%);
+        }
+        
+        /* Video background styling */
+        .login-container {
+            position: relative;
+            width: 100%;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #0a0e27 0%, #111829 50%, #0d1426 100%);
+            overflow: hidden;
+        }
+        
+        .video-background {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            opacity: 0.3;
+        }
+        
+        .video-background video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            filter: blur(2px) brightness(0.4);
+        }
+        
+        /* Animated background gradient overlay */
+        .gradient-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            background: linear-gradient(135deg, #0a0e27 0%, #111829 50%, #0d1426 100%);
+            animation: gradientShift 15s ease infinite;
+            background-size: 400% 400%;
+        }
+        
+        @keyframes gradientShift {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+        
+        /* Floating particles animation */
+        .particle {
+            position: fixed;
+            pointer-events: none;
+            z-index: -1;
+        }
+        
+        .particle::before {
+            content: '';
+            display: block;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle, rgba(0, 217, 255, 0.5) 0%, transparent 70%);
+            border-radius: 50%;
+            filter: blur(1px);
+        }
+        
+        /* Login card styling */
+        .login-card {
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            background: rgba(17, 24, 41, 0.85);
+            border: 2px solid rgba(0, 217, 255, 0.3);
+            border-radius: 20px;
+            padding: 60px 50px;
+            width: 100%;
+            max-width: 450px;
+            box-shadow: 
+                0 8px 32px rgba(0, 217, 255, 0.2),
+                inset 0 0 60px rgba(0, 217, 255, 0.05),
+                0 0 60px rgba(0, 217, 255, 0.1);
+            position: relative;
+            z-index: 10;
+            animation: slideInUp 0.8s ease-out;
+            border-top: 1px solid rgba(0, 245, 221, 0.2);
+            border-left: 1px solid rgba(0, 245, 221, 0.1);
+        }
+        
+        @keyframes slideInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .login-header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+        
+        .login-title {
+            font-size: 2.5em;
+            font-weight: 800;
+            background: linear-gradient(135deg, #00d9ff 0%, #00f5dd 50%, #d946ef 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-shadow: 0 0 30px rgba(0, 217, 255, 0.3);
+            margin-bottom: 10px;
+            letter-spacing: 1px;
+        }
+        
+        .login-subtitle {
+            font-size: 0.95em;
+            color: #a0aec0;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            font-weight: 500;
+        }
+        
+        .input-group {
+            margin-bottom: 25px;
+            animation: fadeInUp 0.6s ease-out forwards;
+        }
+        
+        .input-group:nth-child(1) { animation-delay: 0.1s; }
+        .input-group:nth-child(2) { animation-delay: 0.2s; }
+        
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .input-label {
+            display: block;
+            margin-bottom: 10px;
+            font-size: 0.9em;
+            font-weight: 600;
+            color: #00d9ff;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            text-shadow: 0 0 10px rgba(0, 217, 255, 0.3);
+        }
+        
+        .login-input {
+            width: 100%;
+            padding: 16px 20px;
+            background: rgba(10, 14, 39, 0.5);
+            border: 2px solid rgba(0, 217, 255, 0.2);
+            border-radius: 12px;
+            color: #ffffff;
+            font-size: 1em;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            backdrop-filter: blur(10px);
+        }
+        
+        .login-input:focus {
+            border-color: #00d9ff;
+            background: rgba(10, 14, 39, 0.8);
+            box-shadow: 
+                0 0 25px rgba(0, 217, 255, 0.4),
+                inset 0 0 20px rgba(0, 217, 255, 0.05);
+            outline: none;
+        }
+        
+        .login-input::placeholder {
+            color: #4a5568;
+        }
+        
+        .button-group {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-top: 30px;
+            margin-bottom: 20px;
+        }
+        
+        .login-btn {
+            padding: 14px 28px;
+            background: linear-gradient(135deg, #00d9ff 0%, #00f5dd 100%);
+            border: none;
+            border-radius: 10px;
+            color: #0a0e27;
+            font-weight: 700;
+            font-size: 1em;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            box-shadow: 0 0 30px rgba(0, 217, 255, 0.3);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .login-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 0 50px rgba(0, 217, 255, 0.6);
+            letter-spacing: 2px;
+        }
+        
+        .login-btn:active {
+            transform: translateY(-1px);
+        }
+        
+        .demo-btn {
+            padding: 14px 28px;
+            background: rgba(217, 70, 239, 0.2);
+            border: 2px solid rgba(217, 70, 239, 0.5);
+            border-radius: 10px;
+            color: #d946ef;
+            font-weight: 700;
+            font-size: 1em;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .demo-btn:hover {
+            background: rgba(217, 70, 239, 0.4);
+            border-color: #d946ef;
+            transform: translateY(-3px);
+            box-shadow: 0 0 30px rgba(217, 70, 239, 0.4);
+        }
+        
+        .footer-text {
+            text-align: center;
+            margin-top: 35px;
+            padding-top: 25px;
+            border-top: 1px solid rgba(0, 217, 255, 0.1);
+            font-size: 0.85em;
+            color: #718096;
+            line-height: 1.6;
+        }
+        
+        .footer-text strong {
+            color: #00d9ff;
+            text-shadow: 0 0 10px rgba(0, 217, 255, 0.3);
+        }
+        
+        .demo-info {
+            background: rgba(0, 217, 255, 0.1);
+            border: 1px solid rgba(0, 217, 255, 0.3);
+            border-radius: 10px;
+            padding: 15px;
+            margin-top: 20px;
+            font-size: 0.9em;
+            color: #a0aec0;
+            line-height: 1.6;
+        }
+        
+        .demo-info strong {
+            color: #00d9ff;
+            display: block;
+            margin-bottom: 8px;
+            text-shadow: 0 0 10px rgba(0, 217, 255, 0.3);
+        }
+        
+        .demo-cred {
+            background: rgba(10, 14, 39, 0.8);
+            padding: 8px 12px;
+            border-radius: 6px;
+            margin: 5px 0;
+            font-family: 'Courier New', monospace;
+            border-left: 3px solid #00d9ff;
+        }
+    </style>
+    
+    <div class="login-container">
+        <div class="gradient-overlay"></div>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # Create login form
+    col1, col2, col3 = st.columns([1, 2.2, 1])
     
     with col2:
-        st.markdown("---")
-        st.markdown("## 🔐 Auto EDA Chatbot Login")
-        st.markdown("---")
+        st.markdown("""
+        <div class="login-card">
+            <div class="login-header">
+                <div class="login-title">🔐 AUTO EDA</div>
+                <div class="login-subtitle">Studio Pro Authentication</div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
         
-        username = st.text_input("👤 Username", placeholder="Enter username")
-        password = st.text_input("🔑 Password", type="password", placeholder="Enter password")
+        # Username input
+        username = st.text_input(
+            "👤 Username",
+            placeholder="Enter your username",
+            key="login_username_creative"
+        )
         
-        col_login, col_register = st.columns(2)
+        # Password input
+        password = st.text_input(
+            "🔑 Password",
+            type="password",
+            placeholder="Enter your password",
+            key="login_password_creative"
+        )
+        
+        # Login button
+        col_login, col_demo = st.columns(2)
         
         with col_login:
-            if st.button("🔓 Login", width="stretch"):
+            if st.button("🚀 LOGIN", use_container_width=True, key="btn_login_creative"):
                 if not username or not password:
                     st.error("❌ Please enter both username and password")
                 elif login_user(username, password):
-                    st.success("✅ Login successful!")
+                    st.success("✅ Login successful! Redirecting...")
+                    st.balloons()
                     st.rerun()
                 else:
-                    st.error("❌ Invalid credentials")
+                    st.error("❌ Invalid credentials. Try demo account")
         
-        with col_register:
-            if st.button("📝 Demo Credentials", width="stretch"):
+        with col_demo:
+            if st.button("📋 DEMO", use_container_width=True, key="btn_demo_creative"):
                 st.info("""
-                **Demo Accounts:**
-                - Username: `admin` | Password: `admin123`
-                - Username: `user` | Password: `user123`
+                **🎯 Demo Accounts Available:**
+                
+                👑 **Admin Account**
+                - Username: `admin`
+                - Password: `admin123`
+                
+                👤 **User Account**
+                - Username: `user`
+                - Password: `user123`
                 """)
         
-        st.markdown("---")
         st.markdown("""
-        <div style='text-align: center; color: #666; font-size: 12px; margin-top: 20px;'>
-        🛡️ Secure Login | 📊 Auto EDA Analysis | 📄 PDF Export
+        <div style='text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid rgba(0, 217, 255, 0.1); color: #718096; font-size: 0.85em;'>
+            <p>🛡️ <strong style='color: #00d9ff;'>Secure Login</strong> | 📊 <strong style='color: #00f5dd;'>Advanced Analytics</strong> | 📄 <strong style='color: #d946ef;'>PDF Export</strong></p>
+            <p style='margin-top: 10px; font-size: 0.8em;'>Auto EDA Studio Pro v2.0 | Enterprise Analytics Platform</p>
         </div>
         """, unsafe_allow_html=True)
 
