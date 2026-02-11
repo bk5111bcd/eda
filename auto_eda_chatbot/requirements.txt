@@ -10,3 +10,4 @@ plotly
 scipy
 openai
 python-dotenv
+fpdf
