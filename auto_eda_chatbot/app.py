@@ -1,3 +1,7 @@
+"""Enhanced Auto EDA Chatbot with Authentication & PDF Export
+Complete redesign with professional UI/UX
+"""
+
 from dotenv import load_dotenv
 load_dotenv()
 import streamlit as st
@@ -558,24 +562,70 @@ st.markdown("""
 
 init_session()
 
-# Check if user is authenticated
+# Check if user is authenticated - CRITICAL FIX
 if not is_authenticated():
     show_login_page()
     st.stop()
 
 # ═════════════════════════════════════════════════════════════════════════════
-# HELPER FUNCTION FOR USER INFO
+# HELPER FUNCTION - ROBUST USER INFO GETTER
 # ═════════════════════════════════════════════════════════════════════════════
 
 def get_user_info():
-    """Get current user information from session state"""
-    user = get_current_user()
-    if user:
-        return {
-            'name': user.get('name', 'User'),
-            'email': user.get('email', 'user@example.com')
-        }
-    return {'name': 'Guest', 'email': 'guest@example.com'}
+    """Get current user information from session state - handles all data types"""
+    try:
+        # First, try to get from session_state directly (most reliable)
+        if 'username' in st.session_state:
+            return {
+                'name': st.session_state.username,
+                'email': st.session_state.get('email', 'user@example.com')
+            }
+        
+        if 'user' in st.session_state:
+            user = st.session_state.user
+            
+            # Handle dictionary
+            if isinstance(user, dict):
+                return {
+                    'name': user.get('name', user.get('username', 'User')),
+                    'email': user.get('email', 'user@example.com')
+                }
+            
+            # Handle string
+            if isinstance(user, str):
+                return {'name': user, 'email': 'user@example.com'}
+        
+        # Try using get_current_user() as fallback
+        user = get_current_user()
+        
+        # Handle None
+        if user is None:
+            return {'name': 'Guest', 'email': 'guest@example.com'}
+        
+        # Handle dictionary
+        if isinstance(user, dict):
+            return {
+                'name': user.get('name', user.get('username', 'User')),
+                'email': user.get('email', 'user@example.com')
+            }
+        
+        # Handle string (username only)
+        if isinstance(user, str):
+            return {'name': user, 'email': 'user@example.com'}
+        
+        # Handle object with attributes
+        if hasattr(user, 'name') or hasattr(user, 'email'):
+            return {
+                'name': getattr(user, 'name', getattr(user, 'username', 'User')),
+                'email': getattr(user, 'email', 'user@example.com')
+            }
+        
+        # Last resort - convert to string
+        return {'name': str(user), 'email': 'user@example.com'}
+        
+    except Exception as e:
+        # If anything goes wrong, return safe default
+        return {'name': 'Guest', 'email': 'guest@example.com'}
 
 # ═════════════════════════════════════════════════════════════════════════════
 # AUTHENTICATED USER INTERFACE
@@ -652,7 +702,6 @@ if uploaded_file is not None:
     try:
         # Save uploaded file temporarily to apply load_dataset normalization
         import tempfile
-        import os
 
         with tempfile.NamedTemporaryFile(delete=False, suffix='.csv') as tmp:
             tmp.write(uploaded_file.getbuffer())
@@ -660,7 +709,7 @@ if uploaded_file is not None:
 
         try:
             df = load_dataset(tmp_path)
-            dataset_name = uploaded_file.name.replace('.csv', '').replace('.xlsx', '')
+            dataset_name = uploaded_file.name.replace('.csv', '').replace('.xlsx', '').replace('.xls', '')
             st.success(f"✅ Dataset loaded successfully: {uploaded_file.name}")
         finally:
             os.unlink(tmp_path)
@@ -744,7 +793,10 @@ if df is not None:
 
         if show_eda:
             st.markdown("---")
-            show_charts(df)
+            try:
+                show_charts(df)
+            except Exception as e:
+                st.error(f"❌ Error generating charts: {str(e)}")
         else:
             st.info("💡 Enable 'Auto EDA Dashboard' in the settings panel to view visualizations")
 
@@ -853,7 +905,9 @@ if df is not None:
                         st.markdown(response)
                         st.session_state.messages.append({"role": "assistant", "content": response})
                     except Exception as e:
-                        st.error(f"❌ Error: {str(e)}")
+                        error_msg = f"❌ Error: {str(e)}"
+                        st.error(error_msg)
+                        st.session_state.messages.append({"role": "assistant", "content": error_msg})
 
     # ─────────────────────────────────────────────────────────────────────────
     # TAB 4: PDF REPORT
@@ -882,7 +936,8 @@ if df is not None:
                                 data=pdf_bytes,
                                 file_name=f"EDA_Report_{dataset_name}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf",
                                 mime="application/pdf",
-                                key="pdf_download"
+                                key="pdf_download",
+                                use_container_width=True
                             )
 
                             st.success("✅ PDF generated successfully!")
