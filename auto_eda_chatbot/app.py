@@ -557,12 +557,12 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ═════════════════════════════════════════════════════════════════════════════
-# AUTHENTICATION - STEP 1
+# AUTHENTICATION - CRITICAL FIX
 # ═════════════════════════════════════════════════════════════════════════════
 
 init_session()
 
-# Check if user is authenticated - CRITICAL FIX
+# Check if user is authenticated - PREVENTS BYPASSING LOGIN
 if not is_authenticated():
     show_login_page()
     st.stop()
