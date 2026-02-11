@@ -1,13 +1,9 @@
 streamlit
 pandas
 numpy
+python-dotenv
 matplotlib
 seaborn
-scikit-learn
-google-generativeai
-wordcloud
 plotly
-scipy
-openai
-python-dotenv
 fpdf
+openpyxl
