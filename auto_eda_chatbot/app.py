@@ -15,7 +15,7 @@ import io
 # Import custom modules
 from chat.qa_engine import answer_question, load_dataset
 from eda.visualizer import show_charts
-from auth import init_session, is_authenticated, show_login_page, show_logout_button, get_current_user, get_user_info
+from auth import init_session, is_authenticated, show_login_page, show_logout_button, get_current_user
 from pdf_generator import generate_pdf_report, get_pdf_bytes
 
 # ═════════════════════════════════════════════════════════════════════════════
