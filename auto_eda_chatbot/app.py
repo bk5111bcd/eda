@@ -1,6 +1,4 @@
-"""Enhanced Auto EDA Chatbot with Authentication & PDF Export
-Complete redesign with professional UI/UX
-"""
+
 
 from dotenv import load_dotenv
 load_dotenv()
